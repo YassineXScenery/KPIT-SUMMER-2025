@@ -1,11 +1,12 @@
+import os
 from PyQt5.QtWidgets import (
-    QWidget, QPushButton, QLabel, QTextEdit, 
+    QWidget, QPushButton, QLabel, QTextEdit,
     QVBoxLayout, QHBoxLayout, QFrame
 )
 from PyQt5.QtCore import Qt, QTimer, pyqtSignal
 from PyQt5.QtGui import (
-    QPainter, QBrush, QColor, 
-    QRadialGradient, QLinearGradient
+    QPainter, QBrush, QColor,
+    QRadialGradient, QLinearGradient, QMovie
 )
 from datetime import datetime
 import db
@@ -41,7 +42,7 @@ class CarLampWidget(QLabel):
         center_x = width // 2
         center_y = height // 2
         lamp_radius = int(min(width, height) * 0.4)
-        
+
         # Lamp housing
         housing_gradient = QLinearGradient(0, 0, 0, height)
         housing_gradient.setColorAt(0, QColor(80, 80, 90))
@@ -49,18 +50,18 @@ class CarLampWidget(QLabel):
         painter.setBrush(QBrush(housing_gradient))
         painter.setPen(QColor(30, 30, 40))
         housing_radius = int(lamp_radius * 1.1)
-        painter.drawEllipse(center_x - housing_radius, center_y - housing_radius, 
-                          housing_radius * 2, housing_radius * 2)
-        
+        painter.drawEllipse(center_x - housing_radius, center_y - housing_radius,
+                            housing_radius * 2, housing_radius * 2)
+
         # Lamp lens
         lens_gradient = QRadialGradient(center_x, center_y, lamp_radius)
         lens_gradient.setColorAt(0, QColor(180, 180, 200, 150))
         lens_gradient.setColorAt(1, QColor(50, 50, 70, 150))
         painter.setBrush(QBrush(lens_gradient))
         painter.setPen(QColor(100, 100, 120, 180))
-        painter.drawEllipse(center_x - lamp_radius, center_y - lamp_radius, 
-                          lamp_radius * 2, lamp_radius * 2)
-        
+        painter.drawEllipse(center_x - lamp_radius, center_y - lamp_radius,
+                            lamp_radius * 2, lamp_radius * 2)
+
         # Glow effect
         if self.glow_intensity > 0:
             glow_radius = int(lamp_radius * (1 + self.glow_intensity / 200))
@@ -69,8 +70,8 @@ class CarLampWidget(QLabel):
             glow_gradient.setColorAt(1, QColor(255, 100, 0, 0))
             painter.setBrush(QBrush(glow_gradient))
             painter.setPen(Qt.NoPen)
-            painter.drawEllipse(center_x - glow_radius, center_y - glow_radius, 
-                              glow_radius * 2, glow_radius * 2)
+            painter.drawEllipse(center_x - glow_radius, center_y - glow_radius,
+                                glow_radius * 2, glow_radius * 2)
 
 class PhysicalButton(QPushButton):
     def __init__(self, text, parent=None):
@@ -94,33 +95,74 @@ class PhysicalButton(QPushButton):
             }
         """)
 
-class MainWindow(QWidget):
+class ManualWindow(QWidget):
     def __init__(self):
         super().__init__()
+        print("Initializing ManualWindow")  # Debug print
         self.setWindowTitle("Car Lamp Control Panel")
-        self.setStyleSheet("""
-            QWidget { background-color: #1a1a2e; color: #e6e6e6; }
-            QTextEdit {
-                background-color: #16213e;
-                border: 1px solid #0f3460;
-                border-radius: 8px;
-                padding: 8px;
-            }
-        """)
-        
-        # Widgets
+
+        # Background label setup
+        self.background = QLabel(self)
+        self.background.setAlignment(Qt.AlignCenter)
+        self.background.setScaledContents(True)  # Scale GIF to fill label
+
+        # Navigate up one directory from components to KPIT SUMMER, then to assets
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        project_root = os.path.dirname(script_dir)  # Move up to KPIT SUMMER
+        gif_path = os.path.join(project_root, "assets", "Backgroundmanual.gif")
+        print(f"Attempting to load GIF from: {gif_path}")  # Debug print
+
+        self.log_box = QTextEdit()
+        self.log_box.setReadOnly(True)
+
+        # Check for GIF with case-insensitive variation
+        if not os.path.exists(gif_path):
+            # Try lowercase variation
+            alt_gif_path = os.path.join(project_root, "assets", "backgroundmanual.gif")
+            if os.path.exists(alt_gif_path):
+                gif_path = alt_gif_path
+                print(f"Found GIF at alternative path: {alt_gif_path}")
+            else:
+                print(f"Background GIF not found at: {gif_path} or {alt_gif_path}")
+                self.setStyleSheet("""
+                    QWidget { background-color: #1a1a2e; color: #e6e6e6; }
+                    QTextEdit {
+                        background-color: rgba(90, 90, 90, 180); /* Transparent grey for log box */
+                        border: 1px solid #0f3460;
+                        border-radius: 8px;
+                        padding: 8px;
+                    }
+                """)
+        else:
+            self.movie = QMovie(gif_path)
+            self.background.setMovie(self.movie)
+            self.movie.start()
+            print("GIF loaded and playing")  # Debug print
+
+            self.setStyleSheet("""
+                QWidget {
+                    background-color: transparent;
+                    color: #e6e6e6;
+                }
+                QTextEdit {
+                    background-color: rgba(90, 90, 90, 180); /* Transparent grey for log box */
+                    border: 1px solid #0f3460;
+                    border-radius: 8px;
+                    padding: 8px;
+                }
+                QLabel#background {
+                    background-color: transparent;
+                }
+            """)
+
         self.lamp = CarLampWidget()
         self.toggle_btn = PhysicalButton("TOGGLE\nLAMP")
         self.status_label = QLabel("LAMP IS OFF")
-        self.log_box = QTextEdit()
-        self.log_box.setReadOnly(True)
-        
-        # Current states
+
         self.current_led_state = 'off'
         self.current_button_state = 'not pressed'
         self.last_db_change = None
-        
-        # Database change watcher (replaces WebSocket)
+
         self.db_watcher = network.DatabaseWatcher(db_config={
             'host': '10.20.0.2',
             'user': 'user',
@@ -129,35 +171,41 @@ class MainWindow(QWidget):
         })
         self.db_watcher.update_received.connect(self.handle_db_change)
         self.db_watcher.start()
-        
-        # Fallback polling timer (5 seconds)
+
         self.poll_timer = QTimer()
         self.poll_timer.setInterval(5000)
         self.poll_timer.timeout.connect(self.check_for_updates)
         self.poll_timer.start()
-        
-        # Layout
+
         control_frame = QFrame()
         control_layout = QHBoxLayout(control_frame)
         control_layout.addWidget(self.lamp)
         control_layout.addWidget(self.toggle_btn)
-        
+
         main_layout = QVBoxLayout()
         main_layout.addWidget(control_frame)
         main_layout.addWidget(self.status_label)
         main_layout.addWidget(QLabel("Activity Log:"))
         main_layout.addWidget(self.log_box)
+
         self.setLayout(main_layout)
-        
-        # Events
+        main_layout.setContentsMargins(20, 20, 20, 20)
+
+        self.background.lower()
+        self.background.setGeometry(0, 0, self.width(), self.height())
+
         self.toggle_btn.clicked.connect(self.toggle_led)
         self.log("Application started")
-        
-        # Initial state load
+
         self.load_initial_state()
 
+    def resizeEvent(self, event):
+        # Update background label to fill window
+        self.background.setGeometry(0, 0, self.width(), self.height())
+        print(f"Window resized to: {self.width()}x{self.height()}")  # Debug print
+        super().resizeEvent(event)
+
     def load_initial_state(self):
-        """Load initial state from database"""
         led_state, button_state, last_change = db.get_current_states()
         if led_state is not None:
             self.current_led_state = led_state
@@ -167,43 +215,35 @@ class MainWindow(QWidget):
             self.log("Initial state loaded")
 
     def handle_db_change(self, signal, value):
-        """Handle changes from MySQL trigger"""
         if signal == 'led':
             self.current_led_state = value
             self.lamp.set_state(value == 'on')
         elif signal == 'button':
             self.current_button_state = value
-            
         self.update_ui()
         self.log(f"Real-time change: {signal}={value}")
 
     def check_for_updates(self):
-        """Fallback polling method"""
         try:
             last_change = db.get_last_update_time()
             if last_change == self.last_db_change:
                 return
-                
             led_state, button_state, last_change = db.get_current_states()
             if led_state is None:
                 return
-                
-            if (led_state != self.current_led_state or 
+            if (led_state != self.current_led_state or
                 button_state != self.current_button_state):
                 self.current_led_state = led_state
                 self.current_button_state = button_state
                 self.last_db_change = last_change
                 self.update_ui()
                 self.log(f"Polling update: LED={led_state}, Button={button_state}")
-                
         except Exception as e:
             self.log(f"Poll error: {str(e)}")
 
     def toggle_led(self):
-        """Toggle LED state and update database"""
         new_led = 'on' if self.current_led_state == 'off' else 'off'
         new_button = 'pressed' if self.current_button_state == 'not pressed' else 'not pressed'
-        
         if db.update_states(new_led, new_button):
             self.current_led_state = new_led
             self.current_button_state = new_button
@@ -214,17 +254,15 @@ class MainWindow(QWidget):
             self.log("Error updating states")
 
     def log(self, message):
-        """Add timestamped message to log"""
         now = datetime.now().strftime('%H:%M:%S')
-        self.log_box.append(f"[{now}] {message}")
+        if hasattr(self, 'log_box'):
+            self.log_box.append(f"[{now}] {message}")
+        else:
+            print(f"Log error: log_box not initialized. Message: [{now}] {message}")
 
     def update_ui(self):
-        """Update all UI elements based on current state"""
-        # Update lamp
         self.lamp.set_state(self.current_led_state == 'on')
         self.status_label.setText(f"LAMP IS {self.current_led_state.upper()}")
-        
-        # Update button style
         button_style = """
             QPushButton {{
                 background: qradialgradient(cx:0.5, cy:0.5, radius:0.7,
@@ -237,7 +275,6 @@ class MainWindow(QWidget):
                 padding: {padding};
             }}
         """
-        
         if self.current_button_state == 'pressed':
             style = button_style.format(
                 color1="#303030", color2="#202020", color3="#101010",
@@ -248,10 +285,10 @@ class MainWindow(QWidget):
                 color1="#505050", color2="#303030", color3="#202020",
                 padding="0px"
             )
-        
         self.toggle_btn.setStyleSheet(style)
 
     def closeEvent(self, event):
-        """Cleanup on window close"""
         self.db_watcher.stop()
+        if hasattr(self, 'movie'):
+            self.movie.stop()
         super().closeEvent(event)

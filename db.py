@@ -1,5 +1,6 @@
 import mysql.connector
 from mysql.connector import Error
+from datetime import datetime
 
 # Database Configuration
 DB_CONFIG = {
@@ -92,3 +93,40 @@ def update_states(led_state, button_state):
     finally:
         if conn and conn.is_connected():
             conn.close()
+
+if __name__ == "__main__":
+    print("\n=== Testing Database Module ===")
+    print(f"Current time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    
+    # Test 1: Check connection
+    print("\n[1] Testing database connection...")
+    conn = get_connection()
+    if conn:
+        print("✅ Connection successful!")
+        conn.close()
+    else:
+        print("❌ Connection failed!")
+    
+    # Test 2: Get last update time
+    print("\n[2] Testing get_last_update_time()...")
+    last_update = get_last_update_time()
+    print(f"Last update time: {last_update}")
+    
+    # Test 3: Get current states
+    print("\n[3] Testing get_current_states()...")
+    led, button, timestamp = get_current_states()
+    print(f"LED: {led}, Button: {button}, Last Change: {timestamp}")
+    
+    # Test 4: Update states (toggle)
+    print("\n[4] Testing update_states()...")
+    new_led = 'on' if led == 'off' else 'off'
+    new_button = 'pressed' if button == 'not pressed' else 'not pressed'
+    success = update_states(new_led, new_button)
+    print(f"Update {'successful' if success else 'failed'}. New states: LED={new_led}, Button={new_button}")
+    
+    # Verify update
+    print("\n[5] Verifying update...")
+    led, button, timestamp = get_current_states()
+    print(f"Updated states - LED: {led}, Button: {button}, Timestamp: {timestamp}")
+    
+    print("\n=== Tests complete ===")
