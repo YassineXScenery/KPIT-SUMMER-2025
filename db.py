@@ -1,5 +1,5 @@
 import mysql.connector
-from mysql.connector import Error
+from mysql.connector import Error, pooling
 from datetime import datetime
 
 # Database Configuration
@@ -8,15 +8,31 @@ DB_CONFIG = {
     'port': 3306,
     'user': 'user',
     'password': '1234',
-    'database': 'iot_system'
+    'auth_plugin': 'mysql_native_password',
+    'database': 'iot_system',
+    'pool_name': 'iot_pool',
+    'pool_size': 5
 }
 
+# Create connection pool
+connection_pool = None
+try:
+    connection_pool = pooling.MySQLConnectionPool(**DB_CONFIG)
+    print("✅ Connection pool created successfully!")
+except Error as e:
+    print(f"❌ Error creating connection pool: {e}")
+
 def get_connection():
-    """Create and return a new database connection"""
+    """Get a connection from the pool"""
+    if not connection_pool:
+        return None
+    
     try:
-        return mysql.connector.connect(**DB_CONFIG)
+        conn = connection_pool.get_connection()
+        conn.autocommit = False
+        return conn
     except Error as e:
-        print(f"Database connection error: {e}")
+        print(f"Error getting connection from pool: {e}")
         return None
 
 def get_last_update_time():
@@ -32,7 +48,9 @@ def get_last_update_time():
             FROM signals_log 
             WHERE signal_name IN ('led', 'button')
         """)
-        return cursor.fetchone()[0]
+        result = cursor.fetchone()
+        cursor.close()
+        return result[0] if result else None
     except Exception as e:
         print("Error getting last update time:", e)
         return None
@@ -62,7 +80,12 @@ def get_current_states():
             ) as latest_states
         """)
         row = cursor.fetchone()
-        return row[0] or 'off', row[1] or 'not pressed', row[2]
+        cursor.close()
+        return (
+            row[0] or 'off',
+            row[1] or 'not pressed',
+            row[2]
+        )
     except Exception as e:
         print("Error getting states:", e)
         return None, None, None
@@ -81,14 +104,12 @@ def update_states(led_state, button_state):
         cursor.execute("""
             INSERT INTO signals_log (signal_name, value, source)
             VALUES (%s, %s, 'GUI'), (%s, %s, 'GUI')
-            ON DUPLICATE KEY UPDATE 
-                value = VALUES(value),
-                timestamp = CURRENT_TIMESTAMP
         """, ('led', led_state, 'button', button_state))
         conn.commit()
         return True
     except Exception as e:
         print("Error updating states:", e)
+        conn.rollback()
         return False
     finally:
         if conn and conn.is_connected():
