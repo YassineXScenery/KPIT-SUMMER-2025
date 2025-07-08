@@ -1,20 +1,21 @@
-*** Settings ***
-Library         DatabaseLibrary
-Library         OperatingSystem
-Library         Collections
+* Settings *
+Library    DatabaseLibrary
+Library    OperatingSystem
+Library    Collections
 
-Resource        ../test_keywords/keywords.robot   # Path to 'keywords.robot'
-Resource        variables.robot                 # Path to 'variables.robot' (same directory)
+Resource    ./variables.robot
+Resource    ../test_keywords/keywords.robot
 
-Suite Setup         Connect To HMI Database
-Suite Teardown      Disconnect From HMI Database
+Suite Setup       Connect To HMI Database
+Suite Teardown    Disconnect From HMI Database
 
-*** Test Cases ***
+* Test Cases *
 
 Verify LED Initial State Is Off
     [Documentation]    Vérifie l'état initial de la LED
-    ${led_state}=      Query LED State From DB
+    ${led_state}=    Query LED State From DB
     Should Be Equal As Strings    ${led_state}    off
+
 
 
 Test LED Toggle With Button Press
@@ -22,16 +23,16 @@ Test LED Toggle With Button Press
 
     # Appui sur le bouton
     Execute SQL String    INSERT INTO signals_log (signal_name, value, source) VALUES ('button', 'pressed', 'test')
-    Sleep                 2s
+    Sleep    2s
     Execute SQL String    INSERT INTO signals_log (signal_name, value, source) VALUES ('led', 'on', 'test')
-    ${led_state}=         Query LED State From DB
+    ${led_state}=    Query LED State From DB
     Should Be Equal As Strings    ${led_state}    on
-    Log                   LED allumée après appui sur le bouton
+    Log    LED allumée après appui sur le bouton
 
     # Relâchement du bouton
     Execute SQL String    INSERT INTO signals_log (signal_name, value, source) VALUES ('button', 'not pressed', 'test')
-    Sleep                 2s
+    Sleep    2s
     Execute SQL String    INSERT INTO signals_log (signal_name, value, source) VALUES ('led', 'off', 'test')
-    ${led_state}=         Query LED State From DB
+    ${led_state}=    Query LED State From DB
     Should Be Equal As Strings    ${led_state}    off
-    Log                   LED éteinte après relâchement du bouton
+    Log    LED éteinte après relâchement du bouton

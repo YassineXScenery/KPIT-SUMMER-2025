@@ -127,7 +127,10 @@ class WelcomeWindow(QWidget):
 
     def open_automatic(self):
         """Open test.robot in VS Code or create valid template if missing"""
-        robot_file = os.path.abspath("test.robot")
+        robot_file = os.path.abspath(os.path.join("components", "robot_tests", "test_cases", "test.robot"))
+        
+        # Create directory structure if it doesn't exist
+        os.makedirs(os.path.dirname(robot_file), exist_ok=True)
         
         # Create valid template ONLY if file doesn't exist
         if not os.path.exists(robot_file):

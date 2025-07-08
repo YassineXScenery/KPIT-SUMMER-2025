@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<robot generator="Robot 7.3.1 (Python 3.13.5 on win32)" generated="2025-07-03T12:30:53.006928" rpa="false" schemaversion="5">
-<suite id="s1" name="Test" source="C:\Users\zones\Desktop\KPIT SUMMER\components\robot_tests\test_cases\test.robot">
+<robot generator="Robot 7.3.1 (Python 3.13.5 on win32)" generated="2025-07-04T12:37:23.684976" rpa="false" schemaversion="5">
+<suite id="s1" name="Test" source="c:\Users\zones\Desktop\KPIT SUMMER\components\robot_tests\test_cases\test.robot">
 <kw name="Connect To HMI Database" owner="keywords" type="SETUP">
 <kw name="Connect To Database" owner="DatabaseLibrary">
-<msg time="2025-07-03T12:30:53.056644" level="INFO">Looking for configuration file: 'resources\db.cfg'</msg>
-<msg time="2025-07-03T12:30:53.056738" level="INFO">Configuration file doesn't exist</msg>
-<msg time="2025-07-03T12:30:53.074862" level="INFO">Connect to DB using : pymysql.connect(db='iot_system', user='user', passwd=***, host='10.20.0.2', port=3306, charset='utf8mb4')</msg>
+<msg time="2025-07-04T12:37:23.842458" level="INFO">Looking for configuration file: 'resources\db.cfg'</msg>
+<msg time="2025-07-04T12:37:23.845648" level="INFO">Configuration file doesn't exist</msg>
+<msg time="2025-07-04T12:37:23.868793" level="INFO">Connect to DB using : pymysql.connect(db='iot_system', user='user', passwd=***, host='10.20.0.2', port=3306, charset='utf8mb4')</msg>
 <arg>pymysql</arg>
 <arg>${DB_NAME}</arg>
 <arg>${DB_USER}</arg>
@@ -14,185 +14,185 @@
 <doc>Creates a database connection using the DB API 2.0 ``db_module`` and the parameters provided.
 Along with listed commonly used arguments (`db_name`, `db_host` etc.)
 you can set any other DB module specific parameters as key/value pairs.</doc>
-<status status="PASS" start="2025-07-03T12:30:53.056366" elapsed="0.141519"/>
+<status status="PASS" start="2025-07-04T12:37:23.840492" elapsed="0.099958"/>
 </kw>
 <doc>Connexion à la base de données iot_system</doc>
-<status status="PASS" start="2025-07-03T12:30:53.055793" elapsed="0.142217"/>
+<status status="PASS" start="2025-07-04T12:37:23.837188" elapsed="0.104377"/>
 </kw>
 <test id="s1-t1" name="Verify LED Initial State Is Off" line="14">
 <kw name="Query LED State From DB" owner="keywords">
 <kw name="Query" owner="DatabaseLibrary">
-<msg time="2025-07-03T12:30:53.198964" level="INFO" html="true">Executing sql:&lt;br&gt;&lt;code style="font-weight: bold;"&gt;SELECT value FROM signals_log WHERE signal_name='led' ORDER BY timestamp DESC LIMIT 1&lt;/code&gt;</msg>
-<msg time="2025-07-03T12:30:53.209696" level="INFO">Commit the transaction</msg>
-<msg time="2025-07-03T12:30:53.222531" level="INFO" html="true">&lt;div style="max-width: 100%; overflow-x: auto;"&gt;&lt;table style="width: auto; border-collapse: collapse; border: 2px solid rgb(140 140 140)"&gt;&lt;caption style="text-align: left; font-weight: bold; padding: 5px;"&gt;Query returned 1 rows&lt;/caption&gt;&lt;tr&gt;&lt;th scope="col" style="color:black; background-color: #d6ecd4; border: 1px solid rgb(160 160 160);padding: 8px 10px;text-align: center;"&gt;Row&lt;/th&gt;&lt;th scope="col" style="background-color: #505050; color: #fff;border: 1px solid rgb(160 160 160);padding: 8px 10px;text-align: center;"&gt;value&lt;/th&gt;&lt;/tr&gt;&lt;tr style="background-color: var(--secondary-color, #eee)"&gt;&lt;th scope="row" style="color:black; background-color: #d6ecd4;border: 1px solid rgb(160 160 160);padding: 8px 10px;text-align: center;"&gt;0&lt;/th&gt;&lt;td style="border: 1px solid rgb(160 160 160);padding: 8px 10px;text-align: center;"&gt;off&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/div&gt;</msg>
-<msg time="2025-07-03T12:30:53.222717" level="INFO">${result} = (('off',),)</msg>
+<msg time="2025-07-04T12:37:23.947074" level="INFO" html="true">Executing sql:&lt;br&gt;&lt;code style="font-weight: bold;"&gt;SELECT value FROM signals_log WHERE signal_name='led' ORDER BY timestamp DESC LIMIT 1&lt;/code&gt;</msg>
+<msg time="2025-07-04T12:37:23.955063" level="INFO">Commit the transaction</msg>
+<msg time="2025-07-04T12:37:23.962241" level="INFO" html="true">&lt;div style="max-width: 100%; overflow-x: auto;"&gt;&lt;table style="width: auto; border-collapse: collapse; border: 2px solid rgb(140 140 140)"&gt;&lt;caption style="text-align: left; font-weight: bold; padding: 5px;"&gt;Query returned 1 rows&lt;/caption&gt;&lt;tr&gt;&lt;th scope="col" style="color:black; background-color: #d6ecd4; border: 1px solid rgb(160 160 160);padding: 8px 10px;text-align: center;"&gt;Row&lt;/th&gt;&lt;th scope="col" style="background-color: #505050; color: #fff;border: 1px solid rgb(160 160 160);padding: 8px 10px;text-align: center;"&gt;value&lt;/th&gt;&lt;/tr&gt;&lt;tr style="background-color: var(--secondary-color, #eee)"&gt;&lt;th scope="row" style="color:black; background-color: #d6ecd4;border: 1px solid rgb(160 160 160);padding: 8px 10px;text-align: center;"&gt;0&lt;/th&gt;&lt;td style="border: 1px solid rgb(160 160 160);padding: 8px 10px;text-align: center;"&gt;off&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/div&gt;</msg>
+<msg time="2025-07-04T12:37:23.962901" level="INFO">${result} = (('off',),)</msg>
 <var>${result}</var>
 <arg>SELECT value FROM signals_log WHERE signal_name='led' ORDER BY timestamp DESC LIMIT 1</arg>
 <doc>Runs a query with the ``select_statement`` and returns the result as list of rows.
 The type of row values depends on the database module -
 usually they are tuples or tuple-like objects.</doc>
-<status status="PASS" start="2025-07-03T12:30:53.198842" elapsed="0.023896"/>
+<status status="PASS" start="2025-07-04T12:37:23.946421" elapsed="0.016744"/>
 </kw>
 <kw name="Set Variable" owner="BuiltIn">
-<msg time="2025-07-03T12:30:53.223360" level="INFO">${led_state} = off</msg>
+<msg time="2025-07-04T12:37:23.965579" level="INFO">${led_state} = off</msg>
 <var>${led_state}</var>
 <arg>${result[0][0]}</arg>
 <doc>Returns the given values which can then be assigned to a variables.</doc>
-<status status="PASS" start="2025-07-03T12:30:53.222892" elapsed="0.000490"/>
+<status status="PASS" start="2025-07-04T12:37:23.963619" elapsed="0.002226"/>
 </kw>
 <return>
 <value>${led_state}</value>
-<status status="PASS" start="2025-07-03T12:30:53.223430" elapsed="0.000048"/>
+<status status="PASS" start="2025-07-04T12:37:23.966131" elapsed="0.000324"/>
 </return>
-<msg time="2025-07-03T12:30:53.223603" level="INFO">${led_state} = off</msg>
+<msg time="2025-07-04T12:37:23.966955" level="INFO">${led_state} = off</msg>
 <var>${led_state}</var>
 <doc>Récupère le dernier état de la LED depuis la base</doc>
-<status status="PASS" start="2025-07-03T12:30:53.198604" elapsed="0.025018"/>
+<status status="PASS" start="2025-07-04T12:37:23.945233" elapsed="0.021935"/>
 </kw>
 <kw name="Should Be Equal As Strings" owner="BuiltIn">
 <arg>${led_state}</arg>
 <arg>off</arg>
 <doc>Fails if objects are unequal after converting them to strings.</doc>
-<status status="PASS" start="2025-07-03T12:30:53.223890" elapsed="0.000241"/>
+<status status="PASS" start="2025-07-04T12:37:23.967953" elapsed="0.000815"/>
 </kw>
 <doc>Vérifie l'état initial de la LED</doc>
-<status status="PASS" start="2025-07-03T12:30:53.198084" elapsed="0.026255"/>
+<status status="PASS" start="2025-07-04T12:37:23.942224" elapsed="0.027441"/>
 </test>
-<test id="s1-t2" name="Test LED Toggle With Button Press" line="20">
+<test id="s1-t2" name="Test LED Toggle With Button Press" line="21">
 <kw name="Execute Sql String" owner="DatabaseLibrary">
-<msg time="2025-07-03T12:30:53.225442" level="INFO" html="true">Executing sql:&lt;br&gt;&lt;code style="font-weight: bold;"&gt;INSERT INTO signals_log (signal_name, value, source) VALUES ('button', 'pressed', 'test')&lt;/code&gt;</msg>
-<msg time="2025-07-03T12:30:53.250397" level="INFO">Commit the transaction</msg>
+<msg time="2025-07-04T12:37:23.974260" level="INFO" html="true">Executing sql:&lt;br&gt;&lt;code style="font-weight: bold;"&gt;INSERT INTO signals_log (signal_name, value, source) VALUES ('button', 'pressed', 'test')&lt;/code&gt;</msg>
+<msg time="2025-07-04T12:37:23.985034" level="INFO">Commit the transaction</msg>
 <arg>INSERT INTO signals_log (signal_name, value, source) VALUES ('button', 'pressed', 'test')</arg>
 <doc>Executes the ``sql_string`` as a single SQL command.</doc>
-<status status="PASS" start="2025-07-03T12:30:53.225298" elapsed="0.037684"/>
+<status status="PASS" start="2025-07-04T12:37:23.973688" elapsed="0.027074"/>
 </kw>
 <kw name="Sleep" owner="BuiltIn">
-<msg time="2025-07-03T12:30:55.264011" level="INFO">Slept 2 seconds.</msg>
+<msg time="2025-07-04T12:37:26.003279" level="INFO">Slept 2 seconds.</msg>
 <arg>2s</arg>
 <doc>Pauses the test executed for the given time.</doc>
-<status status="PASS" start="2025-07-03T12:30:53.263491" elapsed="2.000635"/>
+<status status="PASS" start="2025-07-04T12:37:24.001530" elapsed="2.002559"/>
 </kw>
 <kw name="Execute Sql String" owner="DatabaseLibrary">
-<msg time="2025-07-03T12:30:55.264596" level="INFO" html="true">Executing sql:&lt;br&gt;&lt;code style="font-weight: bold;"&gt;INSERT INTO signals_log (signal_name, value, source) VALUES ('led', 'on', 'test')&lt;/code&gt;</msg>
-<msg time="2025-07-03T12:30:55.279073" level="INFO">Commit the transaction</msg>
+<msg time="2025-07-04T12:37:26.005822" level="INFO" html="true">Executing sql:&lt;br&gt;&lt;code style="font-weight: bold;"&gt;INSERT INTO signals_log (signal_name, value, source) VALUES ('led', 'on', 'test')&lt;/code&gt;</msg>
+<msg time="2025-07-04T12:37:26.035685" level="INFO">Commit the transaction</msg>
 <arg>INSERT INTO signals_log (signal_name, value, source) VALUES ('led', 'on', 'test')</arg>
 <doc>Executes the ``sql_string`` as a single SQL command.</doc>
-<status status="PASS" start="2025-07-03T12:30:55.264482" elapsed="0.030151"/>
+<status status="PASS" start="2025-07-04T12:37:26.005276" elapsed="0.059946"/>
 </kw>
 <kw name="Query LED State From DB" owner="keywords">
 <kw name="Query" owner="DatabaseLibrary">
-<msg time="2025-07-03T12:30:55.295486" level="INFO" html="true">Executing sql:&lt;br&gt;&lt;code style="font-weight: bold;"&gt;SELECT value FROM signals_log WHERE signal_name='led' ORDER BY timestamp DESC LIMIT 1&lt;/code&gt;</msg>
-<msg time="2025-07-03T12:30:55.309756" level="INFO">Commit the transaction</msg>
-<msg time="2025-07-03T12:30:55.322026" level="INFO" html="true">&lt;div style="max-width: 100%; overflow-x: auto;"&gt;&lt;table style="width: auto; border-collapse: collapse; border: 2px solid rgb(140 140 140)"&gt;&lt;caption style="text-align: left; font-weight: bold; padding: 5px;"&gt;Query returned 1 rows&lt;/caption&gt;&lt;tr&gt;&lt;th scope="col" style="color:black; background-color: #d6ecd4; border: 1px solid rgb(160 160 160);padding: 8px 10px;text-align: center;"&gt;Row&lt;/th&gt;&lt;th scope="col" style="background-color: #505050; color: #fff;border: 1px solid rgb(160 160 160);padding: 8px 10px;text-align: center;"&gt;value&lt;/th&gt;&lt;/tr&gt;&lt;tr style="background-color: var(--secondary-color, #eee)"&gt;&lt;th scope="row" style="color:black; background-color: #d6ecd4;border: 1px solid rgb(160 160 160);padding: 8px 10px;text-align: center;"&gt;0&lt;/th&gt;&lt;td style="border: 1px solid rgb(160 160 160);padding: 8px 10px;text-align: center;"&gt;on&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/div&gt;</msg>
-<msg time="2025-07-03T12:30:55.322171" level="INFO">${result} = (('on',),)</msg>
+<msg time="2025-07-04T12:37:26.068090" level="INFO" html="true">Executing sql:&lt;br&gt;&lt;code style="font-weight: bold;"&gt;SELECT value FROM signals_log WHERE signal_name='led' ORDER BY timestamp DESC LIMIT 1&lt;/code&gt;</msg>
+<msg time="2025-07-04T12:37:26.131852" level="INFO">Commit the transaction</msg>
+<msg time="2025-07-04T12:37:26.258681" level="INFO" html="true">&lt;div style="max-width: 100%; overflow-x: auto;"&gt;&lt;table style="width: auto; border-collapse: collapse; border: 2px solid rgb(140 140 140)"&gt;&lt;caption style="text-align: left; font-weight: bold; padding: 5px;"&gt;Query returned 1 rows&lt;/caption&gt;&lt;tr&gt;&lt;th scope="col" style="color:black; background-color: #d6ecd4; border: 1px solid rgb(160 160 160);padding: 8px 10px;text-align: center;"&gt;Row&lt;/th&gt;&lt;th scope="col" style="background-color: #505050; color: #fff;border: 1px solid rgb(160 160 160);padding: 8px 10px;text-align: center;"&gt;value&lt;/th&gt;&lt;/tr&gt;&lt;tr style="background-color: var(--secondary-color, #eee)"&gt;&lt;th scope="row" style="color:black; background-color: #d6ecd4;border: 1px solid rgb(160 160 160);padding: 8px 10px;text-align: center;"&gt;0&lt;/th&gt;&lt;td style="border: 1px solid rgb(160 160 160);padding: 8px 10px;text-align: center;"&gt;on&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/div&gt;</msg>
+<msg time="2025-07-04T12:37:26.260165" level="INFO">${result} = (('on',),)</msg>
 <var>${result}</var>
 <arg>SELECT value FROM signals_log WHERE signal_name='led' ORDER BY timestamp DESC LIMIT 1</arg>
 <doc>Runs a query with the ``select_statement`` and returns the result as list of rows.
 The type of row values depends on the database module -
 usually they are tuples or tuple-like objects.</doc>
-<status status="PASS" start="2025-07-03T12:30:55.295384" elapsed="0.026803"/>
+<status status="PASS" start="2025-07-04T12:37:26.067598" elapsed="0.192986"/>
 </kw>
 <kw name="Set Variable" owner="BuiltIn">
-<msg time="2025-07-03T12:30:55.322621" level="INFO">${led_state} = on</msg>
+<msg time="2025-07-04T12:37:26.262452" level="INFO">${led_state} = on</msg>
 <var>${led_state}</var>
 <arg>${result[0][0]}</arg>
 <doc>Returns the given values which can then be assigned to a variables.</doc>
-<status status="PASS" start="2025-07-03T12:30:55.322307" elapsed="0.000329"/>
+<status status="PASS" start="2025-07-04T12:37:26.261067" elapsed="0.001632"/>
 </kw>
 <return>
 <value>${led_state}</value>
-<status status="PASS" start="2025-07-03T12:30:55.322810" elapsed="0.000044"/>
+<status status="PASS" start="2025-07-04T12:37:26.263101" elapsed="0.000228"/>
 </return>
-<msg time="2025-07-03T12:30:55.322956" level="INFO">${led_state} = on</msg>
+<msg time="2025-07-04T12:37:26.263748" level="INFO">${led_state} = on</msg>
 <var>${led_state}</var>
 <doc>Récupère le dernier état de la LED depuis la base</doc>
-<status status="PASS" start="2025-07-03T12:30:55.295172" elapsed="0.027797"/>
+<status status="PASS" start="2025-07-04T12:37:26.066654" elapsed="0.197296"/>
 </kw>
 <kw name="Should Be Equal As Strings" owner="BuiltIn">
 <arg>${led_state}</arg>
 <arg>on</arg>
 <doc>Fails if objects are unequal after converting them to strings.</doc>
-<status status="PASS" start="2025-07-03T12:30:55.323282" elapsed="0.000136"/>
+<status status="PASS" start="2025-07-04T12:37:26.265089" elapsed="0.000828"/>
 </kw>
 <kw name="Log" owner="BuiltIn">
-<msg time="2025-07-03T12:30:55.323649" level="INFO">LED allumée après appui sur le bouton</msg>
+<msg time="2025-07-04T12:37:26.267818" level="INFO">LED allumée après appui sur le bouton</msg>
 <arg>LED allumée après appui sur le bouton</arg>
 <doc>Logs the given message with the given level.</doc>
-<status status="PASS" start="2025-07-03T12:30:55.323581" elapsed="0.000094"/>
+<status status="PASS" start="2025-07-04T12:37:26.267244" elapsed="0.000897"/>
 </kw>
 <kw name="Execute Sql String" owner="DatabaseLibrary">
-<msg time="2025-07-03T12:30:55.324090" level="INFO" html="true">Executing sql:&lt;br&gt;&lt;code style="font-weight: bold;"&gt;INSERT INTO signals_log (signal_name, value, source) VALUES ('button', 'not pressed', 'test')&lt;/code&gt;</msg>
-<msg time="2025-07-03T12:30:55.339599" level="INFO">Commit the transaction</msg>
+<msg time="2025-07-04T12:37:26.269748" level="INFO" html="true">Executing sql:&lt;br&gt;&lt;code style="font-weight: bold;"&gt;INSERT INTO signals_log (signal_name, value, source) VALUES ('button', 'not pressed', 'test')&lt;/code&gt;</msg>
+<msg time="2025-07-04T12:37:27.110357" level="INFO">Commit the transaction</msg>
 <arg>INSERT INTO signals_log (signal_name, value, source) VALUES ('button', 'not pressed', 'test')</arg>
 <doc>Executes the ``sql_string`` as a single SQL command.</doc>
-<status status="PASS" start="2025-07-03T12:30:55.323956" elapsed="0.035862"/>
+<status status="PASS" start="2025-07-04T12:37:26.268988" elapsed="0.879516"/>
 </kw>
 <kw name="Sleep" owner="BuiltIn">
-<msg time="2025-07-03T12:30:57.361205" level="INFO">Slept 2 seconds.</msg>
+<msg time="2025-07-04T12:37:29.151112" level="INFO">Slept 2 seconds.</msg>
 <arg>2s</arg>
 <doc>Pauses the test executed for the given time.</doc>
-<status status="PASS" start="2025-07-03T12:30:55.360212" elapsed="2.001313"/>
+<status status="PASS" start="2025-07-04T12:37:27.149599" elapsed="2.002017"/>
 </kw>
 <kw name="Execute Sql String" owner="DatabaseLibrary">
-<msg time="2025-07-03T12:30:57.363009" level="INFO" html="true">Executing sql:&lt;br&gt;&lt;code style="font-weight: bold;"&gt;INSERT INTO signals_log (signal_name, value, source) VALUES ('led', 'off', 'test')&lt;/code&gt;</msg>
-<msg time="2025-07-03T12:30:57.375868" level="INFO">Commit the transaction</msg>
+<msg time="2025-07-04T12:37:29.153240" level="INFO" html="true">Executing sql:&lt;br&gt;&lt;code style="font-weight: bold;"&gt;INSERT INTO signals_log (signal_name, value, source) VALUES ('led', 'off', 'test')&lt;/code&gt;</msg>
+<msg time="2025-07-04T12:37:29.188116" level="INFO">Commit the transaction</msg>
 <arg>INSERT INTO signals_log (signal_name, value, source) VALUES ('led', 'off', 'test')</arg>
 <doc>Executes the ``sql_string`` as a single SQL command.</doc>
-<status status="PASS" start="2025-07-03T12:30:57.362635" elapsed="0.030230"/>
+<status status="PASS" start="2025-07-04T12:37:29.152713" elapsed="0.058795"/>
 </kw>
 <kw name="Query LED State From DB" owner="keywords">
 <kw name="Query" owner="DatabaseLibrary">
-<msg time="2025-07-03T12:30:57.394425" level="INFO" html="true">Executing sql:&lt;br&gt;&lt;code style="font-weight: bold;"&gt;SELECT value FROM signals_log WHERE signal_name='led' ORDER BY timestamp DESC LIMIT 1&lt;/code&gt;</msg>
-<msg time="2025-07-03T12:30:57.406721" level="INFO">Commit the transaction</msg>
-<msg time="2025-07-03T12:30:57.418242" level="INFO" html="true">&lt;div style="max-width: 100%; overflow-x: auto;"&gt;&lt;table style="width: auto; border-collapse: collapse; border: 2px solid rgb(140 140 140)"&gt;&lt;caption style="text-align: left; font-weight: bold; padding: 5px;"&gt;Query returned 1 rows&lt;/caption&gt;&lt;tr&gt;&lt;th scope="col" style="color:black; background-color: #d6ecd4; border: 1px solid rgb(160 160 160);padding: 8px 10px;text-align: center;"&gt;Row&lt;/th&gt;&lt;th scope="col" style="background-color: #505050; color: #fff;border: 1px solid rgb(160 160 160);padding: 8px 10px;text-align: center;"&gt;value&lt;/th&gt;&lt;/tr&gt;&lt;tr style="background-color: var(--secondary-color, #eee)"&gt;&lt;th scope="row" style="color:black; background-color: #d6ecd4;border: 1px solid rgb(160 160 160);padding: 8px 10px;text-align: center;"&gt;0&lt;/th&gt;&lt;td style="border: 1px solid rgb(160 160 160);padding: 8px 10px;text-align: center;"&gt;off&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/div&gt;</msg>
-<msg time="2025-07-03T12:30:57.419218" level="INFO">${result} = (('off',),)</msg>
+<msg time="2025-07-04T12:37:29.214868" level="INFO" html="true">Executing sql:&lt;br&gt;&lt;code style="font-weight: bold;"&gt;SELECT value FROM signals_log WHERE signal_name='led' ORDER BY timestamp DESC LIMIT 1&lt;/code&gt;</msg>
+<msg time="2025-07-04T12:37:29.379344" level="INFO">Commit the transaction</msg>
+<msg time="2025-07-04T12:37:29.396453" level="INFO" html="true">&lt;div style="max-width: 100%; overflow-x: auto;"&gt;&lt;table style="width: auto; border-collapse: collapse; border: 2px solid rgb(140 140 140)"&gt;&lt;caption style="text-align: left; font-weight: bold; padding: 5px;"&gt;Query returned 1 rows&lt;/caption&gt;&lt;tr&gt;&lt;th scope="col" style="color:black; background-color: #d6ecd4; border: 1px solid rgb(160 160 160);padding: 8px 10px;text-align: center;"&gt;Row&lt;/th&gt;&lt;th scope="col" style="background-color: #505050; color: #fff;border: 1px solid rgb(160 160 160);padding: 8px 10px;text-align: center;"&gt;value&lt;/th&gt;&lt;/tr&gt;&lt;tr style="background-color: var(--secondary-color, #eee)"&gt;&lt;th scope="row" style="color:black; background-color: #d6ecd4;border: 1px solid rgb(160 160 160);padding: 8px 10px;text-align: center;"&gt;0&lt;/th&gt;&lt;td style="border: 1px solid rgb(160 160 160);padding: 8px 10px;text-align: center;"&gt;off&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/div&gt;</msg>
+<msg time="2025-07-04T12:37:29.397001" level="INFO">${result} = (('off',),)</msg>
 <var>${result}</var>
 <arg>SELECT value FROM signals_log WHERE signal_name='led' ORDER BY timestamp DESC LIMIT 1</arg>
 <doc>Runs a query with the ``select_statement`` and returns the result as list of rows.
 The type of row values depends on the database module -
 usually they are tuples or tuple-like objects.</doc>
-<status status="PASS" start="2025-07-03T12:30:57.394290" elapsed="0.024986"/>
+<status status="PASS" start="2025-07-04T12:37:29.214390" elapsed="0.182807"/>
 </kw>
 <kw name="Set Variable" owner="BuiltIn">
-<msg time="2025-07-03T12:30:57.420180" level="INFO">${led_state} = off</msg>
+<msg time="2025-07-04T12:37:29.399639" level="INFO">${led_state} = off</msg>
 <var>${led_state}</var>
 <arg>${result[0][0]}</arg>
 <doc>Returns the given values which can then be assigned to a variables.</doc>
-<status status="PASS" start="2025-07-03T12:30:57.419546" elapsed="0.000665"/>
+<status status="PASS" start="2025-07-04T12:37:29.397594" elapsed="0.002324"/>
 </kw>
 <return>
 <value>${led_state}</value>
-<status status="PASS" start="2025-07-03T12:30:57.420277" elapsed="0.000039"/>
+<status status="PASS" start="2025-07-04T12:37:29.400168" elapsed="0.000224"/>
 </return>
-<msg time="2025-07-03T12:30:57.420448" level="INFO">${led_state} = off</msg>
+<msg time="2025-07-04T12:37:29.400800" level="INFO">${led_state} = off</msg>
 <var>${led_state}</var>
 <doc>Récupère le dernier état de la LED depuis la base</doc>
-<status status="PASS" start="2025-07-03T12:30:57.393989" elapsed="0.026483"/>
+<status status="PASS" start="2025-07-04T12:37:29.213562" elapsed="0.187423"/>
 </kw>
 <kw name="Should Be Equal As Strings" owner="BuiltIn">
 <arg>${led_state}</arg>
 <arg>off</arg>
 <doc>Fails if objects are unequal after converting them to strings.</doc>
-<status status="PASS" start="2025-07-03T12:30:57.420930" elapsed="0.000226"/>
+<status status="PASS" start="2025-07-04T12:37:29.401935" elapsed="0.000648"/>
 </kw>
 <kw name="Log" owner="BuiltIn">
-<msg time="2025-07-03T12:30:57.421670" level="INFO">LED éteinte après relâchement du bouton</msg>
+<msg time="2025-07-04T12:37:29.403929" level="INFO">LED éteinte après relâchement du bouton</msg>
 <arg>LED éteinte après relâchement du bouton</arg>
 <doc>Logs the given message with the given level.</doc>
-<status status="PASS" start="2025-07-03T12:30:57.421550" elapsed="0.000165"/>
+<status status="PASS" start="2025-07-04T12:37:29.403453" elapsed="0.000761"/>
 </kw>
 <doc>Simule l'appui et le relâchement du bouton poussoir et vérifie l'effet sur la LED</doc>
-<status status="PASS" start="2025-07-03T12:30:53.224938" elapsed="4.197155"/>
+<status status="PASS" start="2025-07-04T12:37:23.971144" elapsed="5.434023"/>
 </test>
 <kw name="Disconnect From HMI Database" owner="keywords" type="TEARDOWN">
 <kw name="Disconnect From Database" owner="DatabaseLibrary">
 <doc>Disconnects from the database.</doc>
-<status status="PASS" start="2025-07-03T12:30:57.423860" elapsed="0.000286"/>
+<status status="PASS" start="2025-07-04T12:37:29.408137" elapsed="0.000899"/>
 </kw>
 <doc>Déconnexion de la base de données</doc>
-<status status="PASS" start="2025-07-03T12:30:57.423697" elapsed="0.000505"/>
+<status status="PASS" start="2025-07-04T12:37:29.407345" elapsed="0.002002"/>
 </kw>
-<status status="PASS" start="2025-07-03T12:30:53.008223" elapsed="4.416001"/>
+<status status="PASS" start="2025-07-04T12:37:23.694929" elapsed="5.714607"/>
 </suite>
 <statistics>
 <total>
@@ -205,6 +205,6 @@ usually they are tuples or tuple-like objects.</doc>
 </suite>
 </statistics>
 <errors>
-<msg time="2025-07-03T12:30:53.049587" level="WARN">Error in file 'C:\Users\zones\Desktop\KPIT SUMMER\components\robot_tests\test_keywords\keywords.robot' on line 21: The '[Return]' setting is deprecated. Use the 'RETURN' statement instead.</msg>
+<msg time="2025-07-04T12:37:23.816927" level="WARN">Error in file 'c:\Users\zones\Desktop\KPIT SUMMER\components\robot_tests\test_keywords\keywords.robot' on line 22: The '[Return]' setting is deprecated. Use the 'RETURN' statement instead.</msg>
 </errors>
 </robot>
