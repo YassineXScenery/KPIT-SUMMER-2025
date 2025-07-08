@@ -4,10 +4,10 @@ from PyQt5.QtWidgets import (
     QWidget, QPushButton, QLabel, QTextEdit,
     QVBoxLayout, QHBoxLayout, QFrame, QButtonGroup
 )
-from PyQt5.QtCore import Qt, QTimer, pyqtSignal
+from PyQt5.QtCore import Qt, QTimer, pyqtSignal, QPoint
 from PyQt5.QtGui import (
     QPainter, QBrush, QColor,
-    QRadialGradient, QLinearGradient, QFont, QPixmap
+    QRadialGradient, QLinearGradient, QMovie, QFont, QPixmap
 )
 from datetime import datetime
 import db
@@ -16,63 +16,72 @@ import network
 class CarLampWidget(QLabel):
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setMinimumSize(50, 50)
+        self.setMinimumSize(600, 300)
         self.on = False
         self.glow_intensity = 0
+        self.car_image = None
+        self.car_pos = 0
         self.glow_timer = QTimer(self)
         self.glow_timer.timeout.connect(self.update_glow)
         self.glow_timer.start(50)
-
+        
+    def load_car_image(self, path):
+        if os.path.exists(path):
+            self.car_image = QPixmap(path)
+            self.car_image = self.car_image.scaled(600, 300, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+        else:
+            print("Car image not found")
+        
     def set_state(self, on):
         self.on = on
-        self.glow_intensity = 100 if on else 0
         self.update()
-
+        
+    def move_left(self):
+        self.car_pos = max(-100, self.car_pos - 20)
+        self.update()
+        
+    def move_right(self):
+        self.car_pos = min(100, self.car_pos + 20)
+        self.update()
+        
     def update_glow(self):
         if self.on and self.glow_intensity < 100:
             self.glow_intensity += 5
         elif not self.on and self.glow_intensity > 0:
             self.glow_intensity -= 5
         self.update()
-
+        
     def paintEvent(self, event):
         painter = QPainter(self)
         painter.setRenderHint(QPainter.Antialiasing)
-        width = self.width()
-        height = self.height()
-        center_x = width // 2
-        center_y = height // 2
-        lamp_radius = int(min(width, height) * 0.4)
-
-        # Lamp housing
-        housing_gradient = QLinearGradient(0, 0, 0, height)
-        housing_gradient.setColorAt(0, QColor(80, 80, 90))
-        housing_gradient.setColorAt(1, QColor(40, 40, 50))
-        painter.setBrush(QBrush(housing_gradient))
-        painter.setPen(QColor(30, 30, 40))
-        housing_radius = int(lamp_radius * 1.1)
-        painter.drawEllipse(center_x - housing_radius, center_y - housing_radius,
-                           housing_radius * 2, housing_radius * 2)
-
-        # Lamp lens
-        lens_gradient = QRadialGradient(center_x, center_y, lamp_radius)
-        lens_gradient.setColorAt(0, QColor(180, 180, 200, 150))
-        lens_gradient.setColorAt(1, QColor(50, 50, 70, 150))
-        painter.setBrush(QBrush(lens_gradient))
-        painter.setPen(QColor(100, 100, 120, 180))
-        painter.drawEllipse(center_x - lamp_radius, center_y - lamp_radius,
-                           lamp_radius * 2, lamp_radius * 2)
-
-        # Glow effect
-        if self.glow_intensity > 0:
-            glow_radius = int(lamp_radius * (1 + self.glow_intensity / 200))
-            glow_gradient = QRadialGradient(center_x, center_y, glow_radius)
-            glow_gradient.setColorAt(0, QColor(255, 230, 180, int(200 * self.glow_intensity / 100)))
-            glow_gradient.setColorAt(1, QColor(255, 100, 0, 0))
-            painter.setBrush(QBrush(glow_gradient))
-            painter.setPen(Qt.NoPen)
-            painter.drawEllipse(center_x - glow_radius, center_y - glow_radius,
-                               glow_radius * 2, glow_radius * 2)
+        
+        if self.car_image:
+            x_pos = self.car_pos + (self.width() - self.car_image.width()) // 2
+            y_pos = (self.height() - self.car_image.height()) // 2
+            painter.drawPixmap(x_pos, y_pos, self.car_image)
+            
+            if self.on or self.glow_intensity > 0:
+                left_light_pos = QPoint(x_pos + int(self.car_image.width()*0.2), 
+                                      y_pos + int(self.car_image.height()*0.5))
+                right_light_pos = QPoint(x_pos + int(self.car_image.width()*0.8), 
+                                       y_pos + int(self.car_image.height()*0.5))
+                
+                light_radius = int(self.width()*0.1)
+                
+                # Left light glow effect
+                gradient = QRadialGradient(left_light_pos, light_radius*2)
+                gradient.setColorAt(0, QColor(255, 230, 180, int(200 * self.glow_intensity / 100)))
+                gradient.setColorAt(1, QColor(255, 200, 100, 0))
+                painter.setBrush(QBrush(gradient))
+                painter.setPen(Qt.NoPen)
+                painter.drawEllipse(left_light_pos, light_radius*2, light_radius*2)
+                
+                # Right light glow effect
+                gradient = QRadialGradient(right_light_pos, light_radius*2)
+                gradient.setColorAt(0, QColor(255, 230, 180, int(200 * self.glow_intensity / 100)))
+                gradient.setColorAt(1, QColor(255, 200, 100, 0))
+                painter.setBrush(QBrush(gradient))
+                painter.drawEllipse(right_light_pos, light_radius*2, light_radius*2)
 
 class PhysicalButton(QPushButton):
     def __init__(self, text, parent=None):
@@ -113,7 +122,7 @@ class ManualWindow(QWidget):
         
         # Connection settings
         self.connection_attempts = 0
-        self.max_connection_attempts = 3
+        self.max_connection_attempts = 5
         self.connection_successful = False
         self.offline_mode = False
 
@@ -135,25 +144,61 @@ class ManualWindow(QWidget):
         self.pwf_timer.timeout.connect(self.check_pwf_state)
 
     def init_ui(self):
-        # Set dark background
-        self.setStyleSheet("""
-            QWidget { background-color: #1a1a2e; color: #e6e6e6; }
-            QTextEdit {
-                background-color: rgba(90, 90, 90, 180);
-                border: 2px solid #0f3460;
-                border-radius: 10px;
-                padding: 10px;
-                font-size: 14pt;
-            }
-            QLabel {
-                font-size: 16pt;
-                color: #FFFFFF;
-            }
-        """)
+        # Setup background
+        self.background = QLabel(self)
+        self.background.setAlignment(Qt.AlignCenter)
+        self.background.setScaledContents(True)
+
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        project_root = os.path.dirname(script_dir)
+        gif_path = os.path.join(project_root, "assets", "Backgroundmanual.gif")
+        car_path = os.path.join(project_root, "assets", "car.png")
+
+        if not os.path.exists(gif_path):
+            alt_gif_path = os.path.join(project_root, "assets", "backgroundmanual.gif")
+            if os.path.exists(alt_gif_path):
+                gif_path = alt_gif_path
+
+        if os.path.exists(gif_path):
+            self.movie = QMovie(gif_path)
+            self.background.setMovie(self.movie)
+            self.movie.start()
+            self.setStyleSheet("""
+                QWidget { background-color: transparent; color: #e6e6e6; }
+                QTextEdit {
+                    background-color: rgba(90, 90, 90, 180);
+                    border: 2px solid #0f3460;
+                    border-radius: 10px;
+                    padding: 10px;
+                    font-size: 14pt;
+                }
+                QLabel#background { background-color: transparent; }
+                QLabel {
+                    font-size: 16pt;
+                    color: #FFFFFF;
+                }
+            """)
+        else:
+            self.setStyleSheet("""
+                QWidget { background-color: #1a1a2e; color: #e6e6e6; }
+                QTextEdit {
+                    background-color: rgba(90, 90, 90, 180);
+                    border: 2px solid #0f3460;
+                    border-radius: 10px;
+                    padding: 10px;
+                    font-size: 14pt;
+                }
+                QLabel {
+                    font-size: 16pt;
+                    color: #FFFFFF;
+                }
+            """)
 
         # UI Elements
-        self.left_lamp = CarLampWidget()
-        self.right_lamp = CarLampWidget()
+        self.car_lamp_widget = CarLampWidget()
+        if os.path.exists(car_path):
+            self.car_lamp_widget.load_car_image(car_path)
+            
         self.toggle_btn = PhysicalButton("TOGGLE\nBUTTON")
         self.status_label = QLabel("LAMPS ARE OFF")
         self.status_label.setFont(QFont('Arial', 16))
@@ -162,18 +207,30 @@ class ManualWindow(QWidget):
         self.log_box.setFont(QFont('Arial', 14))
         self.log_box.setReadOnly(True)
 
-        # Add car image
-        self.car_label = QLabel(self)
-        script_dir = os.path.dirname(os.path.abspath(__file__))
-        project_root = os.path.dirname(script_dir)
-        car_path = os.path.join(project_root, "assets", "car.png")
-        if os.path.exists(car_path):
-            car_pixmap = QPixmap(car_path)
-            scaled_pixmap = car_pixmap.scaled(600, 300, Qt.KeepAspectRatio, Qt.SmoothTransformation)
-            self.car_label.setPixmap(scaled_pixmap)
-            self.car_label.setAlignment(Qt.AlignCenter)
-        else:
-            self.car_label.setText("car.png not found")
+        # Movement buttons
+        self.move_left_btn = QPushButton("←")
+        self.move_right_btn = QPushButton("→")
+        self.move_left_btn.clicked.connect(self.car_lamp_widget.move_left)
+        self.move_right_btn.clicked.connect(self.car_lamp_widget.move_right)
+        
+        arrow_btn_style = """
+            QPushButton {
+                font-size: 20pt;
+                padding: 10px 20px;
+                background-color: #404040;
+                border: 2px solid #303030;
+                border-radius: 5px;
+                color: white;
+            }
+            QPushButton:hover {
+                background-color: #505050;
+            }
+            QPushButton:pressed {
+                background-color: #303030;
+            }
+        """
+        self.move_left_btn.setStyleSheet(arrow_btn_style)
+        self.move_right_btn.setStyleSheet(arrow_btn_style)
 
         # Back button
         self.back_btn = QPushButton("← Back to Main")
@@ -208,9 +265,8 @@ class ManualWindow(QWidget):
                 background-color: #404040;
                 border: 3px solid #151515;
                 border-radius: 12px;
-                color: #FFFFFF;
-                font-weight: bold;
-                font-size: 16pt;
+                color: white;
+                font-size: 28pt;
                 padding: 8px;
                 min-width: 80px;
                 min-height: 60px;
@@ -218,6 +274,8 @@ class ManualWindow(QWidget):
             QPushButton:checked {
                 background-color: #606060;
                 border: 3px solid #00ff00;
+                color: #00ff00;
+                font-weight: bold;
             }
             QPushButton:pressed {
                 background-color: #303030;
@@ -274,13 +332,9 @@ class ManualWindow(QWidget):
         control_frame = QFrame()
         control_layout = QHBoxLayout(control_frame)
         control_layout.addWidget(self.toggle_btn)
-        control_layout.addStretch()
-        control_layout.addWidget(self.car_label, alignment=Qt.AlignCenter)
-        lamps_layout = QHBoxLayout()
-        lamps_layout.addWidget(self.left_lamp)
-        lamps_layout.addSpacing(100)
-        lamps_layout.addWidget(self.right_lamp)
-        control_layout.addLayout(lamps_layout)
+        control_layout.addWidget(self.move_left_btn)
+        control_layout.addWidget(self.car_lamp_widget)
+        control_layout.addWidget(self.move_right_btn)
         control_layout.setSpacing(20)
 
         main_layout = QVBoxLayout()
@@ -293,6 +347,9 @@ class ManualWindow(QWidget):
         main_layout.setSpacing(20)
 
         self.setLayout(main_layout)
+        self.background.lower()
+        self.background.setGeometry(0, 0, self.width(), self.height())
+
         self.toggle_btn.clicked.connect(self.toggle_button)
         self.update_ui()
 
@@ -410,9 +467,8 @@ class ManualWindow(QWidget):
             self.update_ui()
 
     def update_ui(self):
-        # Update lamps
-        self.left_lamp.set_state(self.current_led_state == 'on')
-        self.right_lamp.set_state(self.current_led_state == 'on')
+        # Update car lamps
+        self.car_lamp_widget.set_state(self.current_led_state == 'on')
         
         # Update status label
         status_text = f"LAMPS ARE {self.current_led_state.upper()} (PWF: {self.current_pwf_state})"
@@ -465,8 +521,7 @@ class ManualWindow(QWidget):
                         self.log(f"Unhandled LED value: {value}")
                         return
                 self.current_led_state = value
-                self.left_lamp.set_state(value == 'on')
-                self.right_lamp.set_state(value == 'on')
+                self.car_lamp_widget.set_state(value == 'on')
             elif signal == 'button':
                 if value not in ['pressed', 'not pressed']:
                     if value == '1':
@@ -482,8 +537,7 @@ class ManualWindow(QWidget):
                     new_led = 'on' if value == 'pressed' else 'off'
                     if new_led != self.current_led_state:
                         self.current_led_state = new_led
-                        self.left_lamp.set_state(new_led == 'on')
-                        self.right_lamp.set_state(new_led == 'on')
+                        self.car_lamp_widget.set_state(new_led == 'on')
                         if self.connection_successful:
                             try:
                                 conn = db.get_connection()
@@ -502,8 +556,7 @@ class ManualWindow(QWidget):
                                 self.log(f"Error updating LEDs on button change: {str(e)}")
                 elif self.current_pwf_state in ['P', 'S'] and self.current_led_state == 'on':
                     self.current_led_state = 'off'
-                    self.left_lamp.set_state(False)
-                    self.right_lamp.set_state(False)
+                    self.car_lamp_widget.set_state(False)
                     if self.connection_successful:
                         try:
                             conn = db.get_connection()
@@ -550,8 +603,7 @@ class ManualWindow(QWidget):
                 if success:
                     self.current_led_state = new_led
                     self.current_button_state = new_button
-                    self.left_lamp.set_state(new_led == 'on')
-                    self.right_lamp.set_state(new_led == 'on')
+                    self.car_lamp_widget.set_state(new_led == 'on')
                     try:
                         network.send_udp_message("led1_toggle", '1' if new_led == 'on' else '0')
                         self.log(f"Button toggled to {new_button}, LEDs set to {new_led}, UDP sent")
@@ -568,8 +620,7 @@ class ManualWindow(QWidget):
                 # Offline mode - just update UI
                 self.current_led_state = new_led
                 self.current_button_state = new_button
-                self.left_lamp.set_state(new_led == 'on')
-                self.right_lamp.set_state(new_led == 'on')
+                self.car_lamp_widget.set_state(new_led == 'on')
                 self.log(f"Offline mode - Button toggled to {new_button}, LEDs set to {new_led}")
                 
             self.update_ui()
@@ -654,12 +705,11 @@ class ManualWindow(QWidget):
             # Update LED state based on new PWF state
             if new_state in ['P', 'S']:
                 self.current_led_state = 'off'
-                self.left_lamp.set_state(False)
-                self.right_lamp.set_state(False)
+                self.car_lamp_widget.set_state(False)
+                self.current_button_state = 'not pressed'
             elif new_state in ['W', 'F'] and self.current_button_state == 'pressed':
                 self.current_led_state = 'on'
-                self.left_lamp.set_state(True)
-                self.right_lamp.set_state(True)
+                self.car_lamp_widget.set_state(True)
             
             # Log PWF state change
             cursor.execute("INSERT INTO signals_log (signal_name, value, source) VALUES (%s, %s, %s)",
@@ -724,8 +774,7 @@ class ManualWindow(QWidget):
                         except Exception as e:
                             self.log(f"LEDs turned off due to PWF state change, but UDP failed: {str(e)}")
                         conn.commit()
-                    self.left_lamp.set_state(False)
-                    self.right_lamp.set_state(False)
+                    self.car_lamp_widget.set_state(False)
                 self.log(f"PWF state updated to {self.current_pwf_state}")
                 self.update_ui()
             conn.close()
@@ -750,12 +799,19 @@ class ManualWindow(QWidget):
         now = datetime.now().strftime('%H:%M:%S')
         if hasattr(self, 'log_box'):
             self.log_box.append(f"[{now}] {message}")
+            self.log_box.verticalScrollBar().setValue(self.log_box.verticalScrollBar().maximum())
         else:
             print(f"Log: {message}")
+
+    def resizeEvent(self, event):
+        self.background.setGeometry(0, 0, self.width(), self.height())
+        super().resizeEvent(event)
 
     def closeEvent(self, event):
         if hasattr(self, 'db_watcher') and self.db_watcher is not None:
             self.db_watcher.stop()
+        if hasattr(self, 'movie'):
+            self.movie.stop()
         if hasattr(self, 'pwf_timer') and self.pwf_timer.isActive():
             self.pwf_timer.stop()
         super().closeEvent(event)
