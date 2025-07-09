@@ -16,6 +16,7 @@ from PyQt5.QtGui import (
 )
 import db
 from .socket_manager import SocketManager
+
 class CarLampWidget(QLabel):
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -124,7 +125,7 @@ class ManualWindow(QWidget):
         # Initialize states
         self.current_led_state = 'off'
         self.current_button_state = 'not pressed'
-        self.current_pwf_state = 'P'
+        self.current_pwf_state = None  # Changed from 'P' to None
         self.last_db_change = None
 
         # Socket communication
@@ -439,7 +440,7 @@ class ManualWindow(QWidget):
                 
             cursor = conn.cursor()
             
-            cursor.execute("SELECT state FROM pwf_state ORDER BY id DESC LIMIT 1")
+            cursor.execute("SELECT state FROM pwf_state WHERE is_active = 1 ORDER BY timestamp DESC LIMIT 1")
             pwf_result = cursor.fetchone()
             if pwf_result:
                 new_pwf_state = pwf_result[0]
@@ -554,13 +555,19 @@ class ManualWindow(QWidget):
 
     def on_pwf_state_change(self, button):
         new_state = button.text()
+        current_state = self.current_pwf_state
         
-        if (self.current_pwf_state == 'P' and new_state == 'F') or \
-           (self.current_pwf_state == 'F' and new_state == 'P'):
-            self.log(f"Invalid PWF transition from {self.current_pwf_state} to {new_state}")
+        # Define invalid transitions
+        invalid_transitions = [
+            ('P', 'F'), ('P', 'W'),
+            ('F', 'P'), ('W', 'P')
+        ]
+        
+        if current_state and (current_state, new_state) in invalid_transitions:
+            self.log(f"Invalid PWF transition from {current_state} to {new_state}")
             self.blockSignals(True)
             for btn in self.pwf_group.buttons():
-                btn.setChecked(btn.text() == self.current_pwf_state)
+                btn.setChecked(btn.text() == current_state)
             self.blockSignals(False)
             return
             
@@ -572,40 +579,42 @@ class ManualWindow(QWidget):
             
             cursor = conn.cursor()
             
-            # First get the max ID
-            cursor.execute("SELECT MAX(id) FROM pwf_state")
-            max_id = cursor.fetchone()[0]
+            # First set all states to inactive (0)
+            cursor.execute("""
+                UPDATE pwf_state 
+                SET is_active = 0
+            """)
             
-            if max_id:
-                # Update using the max ID directly
-                cursor.execute("""
-                    UPDATE pwf_state 
-                    SET state = %s, timestamp = CURRENT_TIMESTAMP
-                    WHERE id = %s
-                """, (new_state, max_id))
-                
-                cursor.execute("""
-                    INSERT INTO signals_log (signal_name, value, source, timestamp)
-                    VALUES (%s, %s, %s, %s)
-                """, ('pwf_state_change', new_state, 'GUI', datetime.now().isoformat()))
-                
-                conn.commit()
-                
-                self.current_pwf_state = new_state
-                
-                if new_state in ['P', 'S'] and self.current_led_state == 'on':
-                    self.current_led_state = 'off'
-                    self.car_lamp_widget.set_state(False)
-                    self._update_led_in_db('off')
-                
-                self.broadcast_state()
-                self.log(f"PWF state changed to {new_state}")
-                self.update_ui()
+            # Then set the new state to active (1)
+            cursor.execute("""
+                UPDATE pwf_state 
+                SET is_active = 1, timestamp = CURRENT_TIMESTAMP
+                WHERE state = %s
+            """, (new_state,))
+            
+            # Log the state change
+            cursor.execute("""
+                INSERT INTO signals_log (signal_name, value, source, timestamp)
+                VALUES (%s, %s, %s, %s)
+            """, ('pwf_state_change', new_state, 'GUI', datetime.now().isoformat()))
+            
+            conn.commit()
+            
+            self.current_pwf_state = new_state
+            
+            if new_state in ['P', 'S'] and self.current_led_state == 'on':
+                self.current_led_state = 'off'
+                self.car_lamp_widget.set_state(False)
+                self._update_led_in_db('off')
+            
+            self.broadcast_state()
+            self.log(f"PWF state changed to {new_state}")
+            self.update_ui()
         except Exception as e:
             self.log(f"Error changing PWF state: {str(e)}")
             self.blockSignals(True)
             for btn in self.pwf_group.buttons():
-                btn.setChecked(btn.text() == self.current_pwf_state)
+                btn.setChecked(btn.text() == current_state)
             self.blockSignals(False)
         finally:
             if conn and conn.is_connected():
@@ -621,42 +630,50 @@ class ManualWindow(QWidget):
 
             cursor = conn.cursor()
             
-            # First get the max ID separately
-            cursor.execute("SELECT MAX(id) FROM pwf_state")
-            max_id = cursor.fetchone()[0]
+            # Check if the current active state has been active for more than 10 seconds
+            cursor.execute("""
+                SELECT state, timestamp 
+                FROM pwf_state 
+                WHERE is_active = 1
+                ORDER BY timestamp DESC 
+                LIMIT 1
+            """)
+            result = cursor.fetchone()
             
-            if max_id:
-                # Then check the timestamp
-                cursor.execute("SELECT timestamp FROM pwf_state WHERE id = %s", (max_id,))
-                result = cursor.fetchone()
-                
-                if result:
-                    last_change = result[0]
-                    if (datetime.now() - last_change).total_seconds() > 10 and self.current_pwf_state != 'P':
-                        # Update using the max ID directly
-                        cursor.execute("""
-                            UPDATE pwf_state 
-                            SET state = 'P', timestamp = CURRENT_TIMESTAMP
-                            WHERE id = %s
-                        """, (max_id,))
-                        
-                        cursor.execute("""
-                            INSERT INTO signals_log (signal_name, value, source, timestamp)
-                            VALUES (%s, %s, %s, %s)
-                        """, ('pwf_state_change', 'P', 'System', datetime.now().isoformat()))
-                        
-                        conn.commit()
-                        self.current_pwf_state = 'P'
-                        self._update_pwf_buttons()
-                        
-                        if self.current_led_state == 'on':
-                            self.current_led_state = 'off'
-                            self.car_lamp_widget.set_state(False)
-                            self._update_led_in_db('off')
-                        
-                        self.broadcast_state()
-                        self.log("PWF state automatically reset to P")
-            
+            if result:
+                state, last_change = result
+                if (datetime.now() - last_change).total_seconds() > 10 and state != 'P':
+                    # Set all states to inactive
+                    cursor.execute("""
+                        UPDATE pwf_state 
+                        SET is_active = 0
+                    """)
+                    
+                    # Set P to active
+                    cursor.execute("""
+                        UPDATE pwf_state 
+                        SET is_active = 1, timestamp = CURRENT_TIMESTAMP
+                        WHERE state = 'P'
+                    """)
+                    
+                    # Log the state change
+                    cursor.execute("""
+                        INSERT INTO signals_log (signal_name, value, source, timestamp)
+                        VALUES (%s, %s, %s, %s)
+                    """, ('pwf_state_change', 'P', 'System', datetime.now().isoformat()))
+                    
+                    conn.commit()
+                    self.current_pwf_state = 'P'
+                    self._update_pwf_buttons()
+                    
+                    if self.current_led_state == 'on':
+                        self.current_led_state = 'off'
+                        self.car_lamp_widget.set_state(False)
+                        self._update_led_in_db('off')
+                    
+                    self.broadcast_state()
+                    self.log("PWF state automatically reset to P")
+        
         except Exception as e:
             self.log(f"Error checking PWF state: {str(e)}")
         finally:
@@ -672,12 +689,19 @@ class ManualWindow(QWidget):
                 
             cursor = conn.cursor()
             
-            cursor.execute("SELECT state FROM pwf_state ORDER BY id DESC LIMIT 1")
+            cursor.execute("""
+                SELECT state FROM pwf_state 
+                WHERE is_active = 1
+                ORDER BY timestamp DESC 
+                LIMIT 1
+            """)
             pwf_state = cursor.fetchone()
             if pwf_state:
                 self.current_pwf_state = pwf_state[0]
                 self._update_pwf_buttons()
                 self.log(f"Initial PWF state loaded: {self.current_pwf_state}")
+            else:
+                self.log("No active PWF state found in database")
             
             cursor.execute("SELECT value FROM signals_log WHERE signal_name = 'led' ORDER BY id DESC LIMIT 1")
             led_state = cursor.fetchone()
@@ -708,7 +732,10 @@ class ManualWindow(QWidget):
         self.blockSignals(False)
 
     def update_ui(self):
-        status_text = f"LAMPS ARE {self.current_led_state.upper()} (PWF: {self.current_pwf_state})"
+        if self.current_pwf_state:
+            status_text = f"LAMPS ARE {self.current_led_state.upper()} (PWF: {self.current_pwf_state})"
+        else:
+            status_text = "LAMPS ARE OFF (No PWF state selected)"
         self.status_label.setText(status_text)
         
         self.toggle_btn.setText(f"TOGGLE\nBUTTON ({self.current_button_state.replace('_', ' ').title()})")
