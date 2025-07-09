@@ -1,18 +1,21 @@
 import os
 import sys
+import socket
+import json
+import threading
+import time
+from datetime import datetime
 from PyQt5.QtWidgets import (
     QWidget, QPushButton, QLabel, QTextEdit,
     QVBoxLayout, QHBoxLayout, QFrame, QButtonGroup
 )
-from PyQt5.QtCore import Qt, QTimer, pyqtSignal, QPoint
+from PyQt5.QtCore import Qt, QTimer, pyqtSignal, QPoint, QObject
 from PyQt5.QtGui import (
     QPainter, QBrush, QColor,
-    QRadialGradient, QLinearGradient, QMovie, QFont, QPixmap
+    QRadialGradient, QLinearGradient, QFont, QPixmap
 )
-from datetime import datetime
 import db
-import network
-
+from .socket_manager import SocketManager
 class CarLampWidget(QLabel):
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -30,7 +33,7 @@ class CarLampWidget(QLabel):
             self.car_image = QPixmap(path)
             self.car_image = self.car_image.scaled(600, 300, Qt.KeepAspectRatio, Qt.SmoothTransformation)
         else:
-            print("Car image not found")
+            print(f"Car image not found at: {path}")
         
     def set_state(self, on):
         self.on = on
@@ -61,14 +64,13 @@ class CarLampWidget(QLabel):
             painter.drawPixmap(x_pos, y_pos, self.car_image)
             
             if self.on or self.glow_intensity > 0:
-                left_light_pos = QPoint(x_pos + int(self.car_image.width()*0.2), 
+                left_light_pos = QPoint(x_pos + int(self.car_image.width()*0.25), 
                                       y_pos + int(self.car_image.height()*0.5))
-                right_light_pos = QPoint(x_pos + int(self.car_image.width()*0.8), 
+                right_light_pos = QPoint(x_pos + int(self.car_image.width()*0.75), 
                                        y_pos + int(self.car_image.height()*0.5))
                 
-                light_radius = int(self.width()*0.1)
+                light_radius = int(self.width()*0.08)
                 
-                # Left light glow effect
                 gradient = QRadialGradient(left_light_pos, light_radius*2)
                 gradient.setColorAt(0, QColor(255, 230, 180, int(200 * self.glow_intensity / 100)))
                 gradient.setColorAt(1, QColor(255, 200, 100, 0))
@@ -76,7 +78,6 @@ class CarLampWidget(QLabel):
                 painter.setPen(Qt.NoPen)
                 painter.drawEllipse(left_light_pos, light_radius*2, light_radius*2)
                 
-                # Right light glow effect
                 gradient = QRadialGradient(right_light_pos, light_radius*2)
                 gradient.setColorAt(0, QColor(255, 230, 180, int(200 * self.glow_intensity / 100)))
                 gradient.setColorAt(1, QColor(255, 200, 100, 0))
@@ -120,84 +121,60 @@ class ManualWindow(QWidget):
         self.setWindowTitle("Car Lamp Control Panel")
         self.resize(1000, 800)
         
-        # Connection settings
-        self.connection_attempts = 0
-        self.max_connection_attempts = 5
-        self.connection_successful = False
-        self.offline_mode = False
-
-        # Initialize default states
+        # Initialize states
         self.current_led_state = 'off'
         self.current_button_state = 'not pressed'
         self.current_pwf_state = 'P'
         self.last_db_change = None
 
+        # Socket communication
+        self.socket_manager = SocketManager()
+        self.socket_manager.update_received.connect(self.handle_socket_update)
+        self.socket_manager.peer_discovered.connect(self.handle_new_peer)
+        self.socket_manager.start()
+
         # Setup UI
         self.init_ui()
 
-        # Start connection attempts
+        # Start connection monitoring
         self.log("Application started")
-        QTimer.singleShot(100, self.attempt_connection)
+        self.attempt_connection()
 
-        # Setup PWF timer (will be started after successful connection)
+        # Setup timers
         self.pwf_timer = QTimer(self)
         self.pwf_timer.timeout.connect(self.check_pwf_state)
+        
+        self.signals_watcher = QTimer(self)
+        self.signals_watcher.timeout.connect(self.check_new_signals)
 
     def init_ui(self):
-        # Setup background
-        self.background = QLabel(self)
-        self.background.setAlignment(Qt.AlignCenter)
-        self.background.setScaledContents(True)
+        self.setStyleSheet("""
+            QWidget { 
+                background-color: #1a1a2e; 
+                color: #e6e6e6; 
+            }
+            QTextEdit {
+                background-color: rgba(90, 90, 90, 180);
+                border: 2px solid #0f3460;
+                border-radius: 10px;
+                padding: 10px;
+                font-size: 14pt;
+            }
+            QLabel {
+                font-size: 16pt;
+                color: #FFFFFF;
+            }
+        """)
 
         script_dir = os.path.dirname(os.path.abspath(__file__))
-        project_root = os.path.dirname(script_dir)
-        gif_path = os.path.join(project_root, "assets", "Backgroundmanual.gif")
+        project_root = os.path.abspath(os.path.join(script_dir, os.pardir))
         car_path = os.path.join(project_root, "assets", "car.png")
-
-        if not os.path.exists(gif_path):
-            alt_gif_path = os.path.join(project_root, "assets", "backgroundmanual.gif")
-            if os.path.exists(alt_gif_path):
-                gif_path = alt_gif_path
-
-        if os.path.exists(gif_path):
-            self.movie = QMovie(gif_path)
-            self.background.setMovie(self.movie)
-            self.movie.start()
-            self.setStyleSheet("""
-                QWidget { background-color: transparent; color: #e6e6e6; }
-                QTextEdit {
-                    background-color: rgba(90, 90, 90, 180);
-                    border: 2px solid #0f3460;
-                    border-radius: 10px;
-                    padding: 10px;
-                    font-size: 14pt;
-                }
-                QLabel#background { background-color: transparent; }
-                QLabel {
-                    font-size: 16pt;
-                    color: #FFFFFF;
-                }
-            """)
-        else:
-            self.setStyleSheet("""
-                QWidget { background-color: #1a1a2e; color: #e6e6e6; }
-                QTextEdit {
-                    background-color: rgba(90, 90, 90, 180);
-                    border: 2px solid #0f3460;
-                    border-radius: 10px;
-                    padding: 10px;
-                    font-size: 14pt;
-                }
-                QLabel {
-                    font-size: 16pt;
-                    color: #FFFFFF;
-                }
-            """)
-
-        # UI Elements
+        
         self.car_lamp_widget = CarLampWidget()
         if os.path.exists(car_path):
             self.car_lamp_widget.load_car_image(car_path)
+        else:
+            print(f"Warning: Car image not found at {car_path}")
             
         self.toggle_btn = PhysicalButton("TOGGLE\nBUTTON")
         self.status_label = QLabel("LAMPS ARE OFF")
@@ -207,7 +184,9 @@ class ManualWindow(QWidget):
         self.log_box.setFont(QFont('Arial', 14))
         self.log_box.setReadOnly(True)
 
-        # Movement buttons
+        self.connection_status = QLabel("Peers: 0 | DB: Connecting...")
+        self.connection_status.setFont(QFont('Arial', 12))
+
         self.move_left_btn = QPushButton("←")
         self.move_right_btn = QPushButton("→")
         self.move_left_btn.clicked.connect(self.car_lamp_widget.move_left)
@@ -232,7 +211,6 @@ class ManualWindow(QWidget):
         self.move_left_btn.setStyleSheet(arrow_btn_style)
         self.move_right_btn.setStyleSheet(arrow_btn_style)
 
-        # Back button
         self.back_btn = QPushButton("← Back to Main")
         self.back_btn.setMinimumWidth(150)
         self.back_btn.setFont(QFont('Arial', 14))
@@ -259,7 +237,6 @@ class ManualWindow(QWidget):
         """)
         self.back_btn.clicked.connect(self.go_back)
 
-        # PWF buttons
         pwf_button_style = """
             QPushButton {
                 background-color: #404040;
@@ -307,7 +284,7 @@ class ManualWindow(QWidget):
         self.f_btn.setStyleSheet(pwf_button_style)
         self.f_btn.setEnabled(False)
 
-        self.pwf_group = QButtonGroup()
+        self.pwf_group = QButtonGroup(self)
         self.pwf_group.setExclusive(True)
         self.pwf_group.addButton(self.p_btn)
         self.pwf_group.addButton(self.s_btn)
@@ -315,7 +292,6 @@ class ManualWindow(QWidget):
         self.pwf_group.addButton(self.f_btn)
         self.pwf_group.buttonClicked.connect(self.on_pwf_state_change)
 
-        # Layout
         top_bar = QHBoxLayout()
         pwf_label = QLabel("PWF State:")
         pwf_label.setFont(QFont('Arial', 16))
@@ -325,6 +301,7 @@ class ManualWindow(QWidget):
         top_bar.addWidget(self.w_btn)
         top_bar.addWidget(self.f_btn)
         top_bar.addStretch()
+        top_bar.addWidget(self.connection_status)
         top_bar.addWidget(self.back_btn)
         top_bar.setContentsMargins(10, 10, 10, 10)
         top_bar.setSpacing(15)
@@ -347,441 +324,11 @@ class ManualWindow(QWidget):
         main_layout.setSpacing(20)
 
         self.setLayout(main_layout)
-        self.background.lower()
-        self.background.setGeometry(0, 0, self.width(), self.height())
-
         self.toggle_btn.clicked.connect(self.toggle_button)
         self.update_ui()
 
-    def attempt_connection(self):
-        if self.connection_attempts >= self.max_connection_attempts:
-            self.offline_mode = True
-            self.log("Max connection attempts reached. Operating in offline mode.")
-            self.update_ui()
-            return
-
-        self.connection_attempts += 1
-        try:
-            # Test basic connection with proper cleanup
-            conn = db.get_connection()
-            if conn is None:
-                raise Exception("Connection object is None")
-            
-            # Test with simple query and ensure we read all results
-            cursor = conn.cursor()
-            cursor.execute("SELECT 1")
-            cursor.fetchall()  # Ensure we read all results
-            cursor.close()
-            conn.close()
-            
-            # Setup database watcher with proper error handling
-            try:
-                if hasattr(self, 'db_watcher'):
-                    self.db_watcher.stop()
-                    
-                self.db_watcher = network.DatabaseWatcher(db_config={
-                    'host': '10.20.0.2',
-                    'user': 'user',
-                    'password': '1234',
-                    'database': 'iot_system'
-                })
-                self.db_watcher.update_received.connect(self.handle_db_change)
-                self.db_watcher.start()
-            except Exception as e:
-                self.log(f"DatabaseWatcher initialization failed: {str(e)}")
-                raise Exception("DatabaseWatcher failed")
-            
-            self.connection_successful = True
-            self.offline_mode = False
-            self.pwf_timer.start(5000)
-            self.log("Database connection established")
-            self.load_initial_state()
-            
-            # Enable PWF buttons
-            self.p_btn.setEnabled(True)
-            self.s_btn.setEnabled(True)
-            self.w_btn.setEnabled(True)
-            self.f_btn.setEnabled(True)
-            
-        except Exception as e:
-            error_msg = str(e)
-            if "1130" in error_msg:
-                error_msg = "MySQL server rejected connection from this host"
-            elif "Unread result found" in error_msg:
-                error_msg = "Connection issue - please restart the application"
-            self.log(f"Connection attempt {self.connection_attempts} failed: {error_msg}")
-            
-            if self.connection_attempts < self.max_connection_attempts:
-                retry_delay = 2000 * self.connection_attempts
-                QTimer.singleShot(retry_delay, self.attempt_connection)
-            else:
-                self.offline_mode = True
-                self.log("Switching to offline mode")
-                self.update_ui()
-
-    def load_initial_state(self):
-        try:
-            if self.offline_mode:
-                self.log("Offline mode - using default states")
-                return
-                
-            led_state, button_state, last_change = db.get_current_states()
-            if led_state is not None:
-                self.current_led_state = led_state
-                self.current_button_state = button_state
-                self.last_db_change = last_change
-                self.log("Initial state loaded")
-            
-            # Load PWF state
-            conn = db.get_connection()
-            if conn is None:
-                raise Exception("Could not get connection")
-                
-            cursor = conn.cursor()
-            cursor.execute("SELECT state FROM pwf_state ORDER BY id DESC LIMIT 1")
-            result = cursor.fetchone()
-            
-            if result:
-                self.current_pwf_state = result[0]
-                if self.current_pwf_state == 'P':
-                    self.p_btn.setChecked(True)
-                elif self.current_pwf_state == 'S':
-                    self.s_btn.setChecked(True)
-                elif self.current_pwf_state == 'W':
-                    self.w_btn.setChecked(True)
-                elif self.current_pwf_state == 'F':
-                    self.f_btn.setChecked(True)
-            else:
-                # Initialize table if empty
-                cursor.execute("INSERT INTO pwf_state (state, is_active, timestamp) VALUES (%s, %s, CURRENT_TIMESTAMP)", ('P', 0))
-                conn.commit()
-                self.current_pwf_state = 'P'
-                self.p_btn.setChecked(True)
-                
-            conn.close()
-            self.update_ui()
-            
-        except Exception as e:
-            self.log(f"Error loading initial state: {str(e)}")
-            self.offline_mode = True
-            self.update_ui()
-
-    def update_ui(self):
-        # Update car lamps
-        self.car_lamp_widget.set_state(self.current_led_state == 'on')
-        
-        # Update status label
-        status_text = f"LAMPS ARE {self.current_led_state.upper()} (PWF: {self.current_pwf_state})"
-        if self.offline_mode:
-            status_text += " [OFFLINE MODE]"
-        elif not self.connection_successful:
-            status_text += " [CONNECTING...]"
-        self.status_label.setText(status_text)
-        
-        # Update toggle button style
-        style = """
-            QPushButton {{
-                background: qradialgradient(cx:0.5, cy:0.5, radius:0.7,
-                    stop:0 {color1}, stop:0.6 {color2}, stop:0.7 {color3});
-                border: 4px solid #151515;
-                border-radius: 50px;
-                color: #FFFFFF;
-                font-weight: bold;
-                font-size: 14pt;
-                padding: {padding};
-            }}
-        """
-        if self.current_button_state == 'pressed':
-            style = style.format(
-                color1="#404040",
-                color2="#303030",
-                color3="#202020",
-                padding="4px 0px 0px 4px"
-            )
-        else:
-            style = style.format(
-                color1="#606060",
-                color2="#404040",
-                color3="#303030",
-                padding="0px"
-            )
-        self.toggle_btn.setStyleSheet(style)
-        self.toggle_btn.setEnabled(True)
-
-    def handle_db_change(self, signal, value):
-        if self.offline_mode:
-            return
-            
-        try:
-            if signal == 'led':
-                if value not in ['on', 'off']:
-                    if value in ['blink_slow', 'blink_fast', '0']:
-                        value = 'off'
-                    else:
-                        self.log(f"Unhandled LED value: {value}")
-                        return
-                self.current_led_state = value
-                self.car_lamp_widget.set_state(value == 'on')
-            elif signal == 'button':
-                if value not in ['pressed', 'not pressed']:
-                    if value == '1':
-                        value = 'pressed'
-                    elif value == '0':
-                        value = 'not pressed'
-                    else:
-                        self.log(f"Unhandled button value: {value}")
-                        return
-                self.current_button_state = value
-                
-                if self.current_pwf_state in ['W', 'F']:
-                    new_led = 'on' if value == 'pressed' else 'off'
-                    if new_led != self.current_led_state:
-                        self.current_led_state = new_led
-                        self.car_lamp_widget.set_state(new_led == 'on')
-                        if self.connection_successful:
-                            try:
-                                conn = db.get_connection()
-                                cursor = conn.cursor()
-                                cursor.execute("INSERT INTO signals_log (signal_name, value, source) VALUES (%s, %s, %s)",
-                                              ('led', new_led, 'GUI'))
-                                conn.commit()
-                                db.update_states(new_led, value)
-                                try:
-                                    network.send_udp_message("led1_toggle", '1' if new_led == 'on' else '0')
-                                    self.log(f"LEDs updated to {new_led} due to button change, UDP sent")
-                                except Exception as e:
-                                    self.log(f"LEDs updated to {new_led}, but UDP failed: {str(e)}")
-                                conn.close()
-                            except Exception as e:
-                                self.log(f"Error updating LEDs on button change: {str(e)}")
-                elif self.current_pwf_state in ['P', 'S'] and self.current_led_state == 'on':
-                    self.current_led_state = 'off'
-                    self.car_lamp_widget.set_state(False)
-                    if self.connection_successful:
-                        try:
-                            conn = db.get_connection()
-                            cursor = conn.cursor()
-                            cursor.execute("INSERT INTO signals_log (signal_name, value, source) VALUES (%s, %s, %s)",
-                                          ('led', 'off', 'GUI'))
-                            conn.commit()
-                            db.update_states('off', value)
-                            try:
-                                network.send_udp_message("led1_toggle", '0')
-                                self.log("LEDs turned off due to P/S state, UDP sent")
-                            except Exception as e:
-                                self.log(f"LEDs turned off, but UDP failed: {str(e)}")
-                            conn.close()
-                        except Exception as e:
-                            self.log(f"Error forcing LEDs off in P/S: {str(e)}")
-            self.update_ui()
-            self.log(f"Real-time change: {signal}={value}")
-        except Exception as e:
-            self.log(f"Error handling DB change: {str(e)}")
-            self.connection_successful = False
-            self.attempt_connection()
-
-    def toggle_button(self):
-        new_button = 'pressed' if self.current_button_state == 'not pressed' else 'not pressed'
-        new_led = self.current_led_state
-        
-        if self.current_pwf_state in ['W', 'F']:
-            new_led = 'on' if new_button == 'pressed' else 'off'
-        elif self.current_pwf_state in ['P', 'S']:
-            new_led = 'off'
-
-        try:
-            if not self.offline_mode and self.connection_successful:
-                conn = db.get_connection()
-                cursor = conn.cursor()
-                cursor.execute("INSERT INTO signals_log (signal_name, value, source) VALUES (%s, %s, %s)",
-                              ('button', new_button, 'GUI'))
-                if new_led != self.current_led_state:
-                    cursor.execute("INSERT INTO signals_log (signal_name, value, source) VALUES (%s, %s, %s)",
-                                  ('led', new_led, 'GUI'))
-                conn.commit()
-                success = db.update_states(new_led, new_button)
-                if success:
-                    self.current_led_state = new_led
-                    self.current_button_state = new_button
-                    self.car_lamp_widget.set_state(new_led == 'on')
-                    try:
-                        network.send_udp_message("led1_toggle", '1' if new_led == 'on' else '0')
-                        self.log(f"Button toggled to {new_button}, LEDs set to {new_led}, UDP sent")
-                    except Exception as e:
-                        self.log(f"Button toggled to {new_button}, LEDs set to {new_led}, but UDP failed: {str(e)}")
-                else:
-                    self.log(f"Failed to update database states with LEDs={new_led}, Button={new_button}")
-                    cursor.execute("DELETE FROM signals_log WHERE signal_name IN ('led', 'button') AND timestamp >= NOW() - INTERVAL 1 SECOND")
-                    conn.commit()
-                    conn.close()
-                    return
-                conn.close()
-            else:
-                # Offline mode - just update UI
-                self.current_led_state = new_led
-                self.current_button_state = new_button
-                self.car_lamp_widget.set_state(new_led == 'on')
-                self.log(f"Offline mode - Button toggled to {new_button}, LEDs set to {new_led}")
-                
-            self.update_ui()
-        except Exception as e:
-            self.log(f"Error toggling button: {str(e)}")
-            try:
-                conn = db.get_connection()
-                cursor = conn.cursor()
-                cursor.execute("DELETE FROM signals_log WHERE signal_name IN ('led', 'button') AND timestamp >= NOW() - INTERVAL 1 SECOND")
-                conn.commit()
-                conn.close()
-            except Exception as e2:
-                self.log(f"Error rolling back signals_log: {str(e2)}")
-
-    def on_pwf_state_change(self):
-        checked_button = self.pwf_group.checkedButton()
-        if not checked_button:
-            return
-            
-        new_state = checked_button.text()
-        
-        # Check for invalid transitions (P↔F)
-        if (self.current_pwf_state == 'P' and new_state == 'F') or (self.current_pwf_state == 'F' and new_state == 'P'):
-            self.log(f"Invalid transition from {self.current_pwf_state} to {new_state}")
-            # Revert to current state
-            if self.current_pwf_state == 'P':
-                self.p_btn.setChecked(True)
-            elif self.current_pwf_state == 'S':
-                self.s_btn.setChecked(True)
-            elif self.current_pwf_state == 'W':
-                self.w_btn.setChecked(True)
-            elif self.current_pwf_state == 'F':
-                self.f_btn.setChecked(True)
-            return
-        
-        if self.offline_mode:
-            self.log(f"Offline mode - PWF state changed to {new_state} (not saved)")
-            self.current_pwf_state = new_state
-            self.update_ui()
-            return
-            
-        try:
-            conn = db.get_connection()
-            if conn is None:
-                raise Exception("Could not get connection")
-                
-            cursor = conn.cursor()
-            
-            # Send buttonBB signal based on PWF state
-            if new_state == 'P':
-                button_value = 'pressed_3'
-                led_value = 'NOT BLINK'
-            elif new_state == 'S':
-                button_value = 'pressed_4'
-                led_value = 'NOT BLINK'
-            elif new_state == 'W':
-                button_value = 'pressed_1'
-                led_value = 'BLINK'
-            elif new_state == 'F':
-                button_value = 'pressed_2'
-                led_value = 'BLINK'
-            
-            # Send buttonBB signal
-            cursor.execute("INSERT INTO signals_log (signal_name, value, source) VALUES (%s, %s, %s)",
-                          ('buttonBB', button_value, 'GUI'))
-            
-            # Send LED signal
-            cursor.execute("INSERT INTO signals_log (signal_name, value, source) VALUES (%s, %s, %s)",
-                          ('led', led_value, 'GUI'))
-            
-            # Update PWF state
-            cursor.execute("SELECT MAX(id) FROM pwf_state")
-            max_id = cursor.fetchone()[0]
-            if max_id is None:
-                cursor.execute("INSERT INTO pwf_state (state, is_active, timestamp) VALUES (%s, %s, CURRENT_TIMESTAMP)", (new_state, 0))
-            else:
-                cursor.execute("UPDATE pwf_state SET state = %s, is_active = %s, timestamp = CURRENT_TIMESTAMP WHERE id = %s", (new_state, 0, max_id))
-            
-            conn.commit()
-            self.current_pwf_state = new_state
-            
-            # Update LED state based on new PWF state
-            if new_state in ['P', 'S']:
-                self.current_led_state = 'off'
-                self.car_lamp_widget.set_state(False)
-                self.current_button_state = 'not pressed'
-            elif new_state in ['W', 'F'] and self.current_button_state == 'pressed':
-                self.current_led_state = 'on'
-                self.car_lamp_widget.set_state(True)
-            
-            # Log PWF state change
-            cursor.execute("INSERT INTO signals_log (signal_name, value, source) VALUES (%s, %s, %s)",
-                          ('pwf_state_change', new_state, 'GUI'))
-            conn.commit()
-            conn.close()
-            
-            self.log(f"PWF state changed to {new_state}")
-            self.log(f"Sent buttonBB: {button_value} and LED: {led_value}")
-            self.update_ui()
-            
-        except Exception as e:
-            self.log(f"Error changing PWF state: {str(e)}")
-            # Revert button state on error
-            if self.current_pwf_state == 'P':
-                self.p_btn.setChecked(True)
-            elif self.current_pwf_state == 'S':
-                self.s_btn.setChecked(True)
-            elif self.current_pwf_state == 'W':
-                self.w_btn.setChecked(True)
-            elif self.current_pwf_state == 'F':
-                self.f_btn.setChecked(True)
-
-    def check_pwf_state(self):
-        if self.offline_mode or not self.connection_successful:
-            return
-            
-        try:
-            conn = db.get_connection()
-            if conn is None:
-                raise Exception("Could not get connection")
-                
-            cursor = conn.cursor()
-            cursor.execute("SELECT state FROM pwf_state ORDER BY id DESC LIMIT 1")
-            result = cursor.fetchone()
-            
-            if result and result[0] != self.current_pwf_state:
-                new_state = result[0]
-                self.current_pwf_state = new_state
-                if self.current_pwf_state == 'P':
-                    self.p_btn.setChecked(True)
-                elif self.current_pwf_state == 'S':
-                    self.s_btn.setChecked(True)
-                elif self.current_pwf_state == 'W':
-                    self.w_btn.setChecked(True)
-                elif self.current_pwf_state == 'F':
-                    self.f_btn.setChecked(True)
-                
-                # Force LEDs off in P or S
-                if new_state in ['P', 'S'] and self.current_led_state == 'on':
-                    self.current_led_state = 'off'
-                    self.current_button_state = 'not pressed'
-                    if self.connection_successful:
-                        cursor.execute("INSERT INTO signals_log (signal_name, value, source) VALUES (%s, %s, %s)",
-                                      ('led', 'off', 'GUI'))
-                        cursor.execute("INSERT INTO signals_log (signal_name, value, source) VALUES (%s, %s, %s)",
-                                      ('button', 'not pressed', 'GUI'))
-                        db.update_states('off', 'not pressed')
-                        try:
-                            network.send_udp_message("led1_toggle", '0')
-                            self.log("LEDs turned off due to PWF state change to Park or StandBy, UDP sent")
-                        except Exception as e:
-                            self.log(f"LEDs turned off due to PWF state change, but UDP failed: {str(e)}")
-                        conn.commit()
-                    self.car_lamp_widget.set_state(False)
-                self.log(f"PWF state updated to {self.current_pwf_state}")
-                self.update_ui()
-            conn.close()
-        except Exception as e:
-            self.log(f"Error checking PWF state: {str(e)}")
-
     def go_back(self):
+        """Return to main window"""
         try:
             script_dir = os.path.dirname(os.path.abspath(__file__))
             project_root = os.path.dirname(script_dir)
@@ -795,23 +342,397 @@ class ManualWindow(QWidget):
             self.log(f"Error going back: {str(e)}")
             print(f"Error going back: {str(e)}")
 
-    def log(self, message):
-        now = datetime.now().strftime('%H:%M:%S')
-        if hasattr(self, 'log_box'):
-            self.log_box.append(f"[{now}] {message}")
-            self.log_box.verticalScrollBar().setValue(self.log_box.verticalScrollBar().maximum())
-        else:
-            print(f"Log: {message}")
+    def handle_socket_update(self, message):
+        if message.get('type') == 'state_update':
+            if message.get('source') == f"GUI_{socket.gethostname()}":
+                return
+                
+            self.blockSignals(True)
+            
+            if 'pwf_state' in message:
+                new_pwf_state = message['pwf_state']
+                if new_pwf_state != self.current_pwf_state:
+                    self.current_pwf_state = new_pwf_state
+                    self._update_pwf_buttons()
+                    self.log(f"PWF state updated via socket to {new_pwf_state}")
+                    
+                    if new_pwf_state in ['P', 'S'] and self.current_led_state == 'on':
+                        self.current_led_state = 'off'
+                        self.car_lamp_widget.set_state(False)
+            
+            if 'led_state' in message:
+                if self.current_pwf_state in ['W', 'F']:
+                    new_led_state = message['led_state']
+                    if new_led_state != self.current_led_state:
+                        self.current_led_state = new_led_state
+                        self.car_lamp_widget.set_state(new_led_state == 'on')
+                        self.log(f"LED state updated via socket to {new_led_state}")
+                elif message['led_state'] == 'on':
+                    self.current_led_state = 'off'
+                    self.car_lamp_widget.set_state(False)
+            
+            if 'button_state' in message:
+                new_button_state = message['button_state']
+                if new_button_state != self.current_button_state:
+                    self.current_button_state = new_button_state
+                    self.log(f"Button state updated via socket to {new_button_state}")
+                    
+                    if self.current_pwf_state in ['W', 'F']:
+                        new_led = 'on' if new_button_state == 'pressed' else 'off'
+                        if new_led != self.current_led_state:
+                            self.current_led_state = new_led
+                            self.car_lamp_widget.set_state(new_led == 'on')
+            
+            self.update_ui()
+            self.blockSignals(False)
 
-    def resizeEvent(self, event):
-        self.background.setGeometry(0, 0, self.width(), self.height())
-        super().resizeEvent(event)
+    def handle_new_peer(self, peer_ip):
+        self.log(f"Discovered new peer: {peer_ip}")
+        self.connection_status.setText(f"Peers: {len(self.socket_manager.peers)} | DB: Online")
+
+    def broadcast_state(self):
+        message = {
+            'type': 'state_update',
+            'led_state': self.current_led_state,
+            'button_state': self.current_button_state,
+            'pwf_state': self.current_pwf_state,
+            'source': f"GUI_{socket.gethostname()}",
+            'timestamp': datetime.now().isoformat()
+        }
+        self.socket_manager.send_update(message)
+
+    def attempt_connection(self):
+        try:
+            conn = db.get_connection()
+            if conn:
+                cursor = conn.cursor()
+                cursor.execute("SELECT 1")
+                cursor.fetchall()
+                conn.close()
+                
+                if not self.pwf_timer.isActive():
+                    self.pwf_timer.start(5000)
+                if not self.signals_watcher.isActive():
+                    self.signals_watcher.start(1000)
+                
+                self.p_btn.setEnabled(True)
+                self.s_btn.setEnabled(True)
+                self.w_btn.setEnabled(True)
+                self.f_btn.setEnabled(True)
+                
+                self.connection_status.setText(f"Peers: {len(self.socket_manager.peers)} | DB: Online")
+                self.load_initial_state()
+            else:
+                self.connection_status.setText(f"Peers: {len(self.socket_manager.peers)} | DB: Offline")
+        except Exception as e:
+            self.connection_status.setText(f"Peers: {len(self.socket_manager.peers)} | DB: Offline")
+        
+        QTimer.singleShot(5000, self.attempt_connection)
+
+    def check_new_signals(self):
+        conn = None
+        try:
+            conn = db.get_connection()
+            if conn is None:
+                self.connection_status.setText(f"Peers: {len(self.socket_manager.peers)} | DB: Offline")
+                return
+                
+            cursor = conn.cursor()
+            
+            cursor.execute("SELECT state FROM pwf_state ORDER BY id DESC LIMIT 1")
+            pwf_result = cursor.fetchone()
+            if pwf_result:
+                new_pwf_state = pwf_result[0]
+                if new_pwf_state != self.current_pwf_state:
+                    self.current_pwf_state = new_pwf_state
+                    self._update_pwf_buttons()
+                    self.log(f"PWF state updated from DB to {new_pwf_state}")
+                    
+                    if new_pwf_state in ['P', 'S'] and self.current_led_state == 'on':
+                        self.current_led_state = 'off'
+                        self.car_lamp_widget.set_state(False)
+                        self._update_led_in_db('off')
+            
+            cursor.execute("SELECT value FROM signals_log WHERE signal_name = 'led' ORDER BY id DESC LIMIT 1")
+            led_result = cursor.fetchone()
+            if led_result:
+                new_led_state = led_result[0]
+                if self.current_pwf_state in ['W', 'F']:
+                    if new_led_state != self.current_led_state:
+                        self.current_led_state = new_led_state
+                        self.car_lamp_widget.set_state(new_led_state == 'on')
+                        self.log(f"LED state updated from DB to {new_led_state}")
+                elif new_led_state == 'on':
+                    self.current_led_state = 'off'
+                    self.car_lamp_widget.set_state(False)
+                    self._update_led_in_db('off')
+            
+            cursor.execute("SELECT value FROM signals_log WHERE signal_name = 'button' ORDER BY id DESC LIMIT 1")
+            button_result = cursor.fetchone()
+            if button_result:
+                new_button_state = button_result[0]
+                if new_button_state != self.current_button_state:
+                    self.current_button_state = new_button_state
+                    self.log(f"Button state updated from DB to {new_button_state}")
+                    
+                    if self.current_pwf_state in ['W', 'F']:
+                        new_led = 'on' if new_button_state == 'pressed' else 'off'
+                        if new_led != self.current_led_state:
+                            self.current_led_state = new_led
+                            self.car_lamp_widget.set_state(new_led == 'on')
+                            self._update_led_in_db(new_led)
+            
+            self.update_ui()
+            
+        except Exception as e:
+            self.log(f"Error checking signals: {str(e)}")
+            self.connection_status.setText(f"Peers: {len(self.socket_manager.peers)} | DB: Offline")
+        finally:
+            if conn and conn.is_connected():
+                conn.close()
+
+    def _update_led_in_db(self, state):
+        conn = None
+        try:
+            conn = db.get_connection()
+            if conn is None:
+                return
+                
+            cursor = conn.cursor()
+            cursor.execute("""
+                INSERT INTO signals_log (signal_name, value, source, timestamp)
+                VALUES (%s, %s, %s, %s)
+            """, ('led', state, 'GUI', datetime.now().isoformat()))
+            conn.commit()
+            self.broadcast_state()
+        except Exception as e:
+            self.log(f"Error updating LED in DB: {str(e)}")
+        finally:
+            if conn and conn.is_connected():
+                conn.close()
+
+    def toggle_button(self):
+        if self.current_pwf_state in ['P', 'S']:
+            self.log("Button disabled in P/S modes")
+            return
+            
+        new_button_state = 'pressed' if self.current_button_state == 'not pressed' else 'not pressed'
+        new_led_state = 'on' if new_button_state == 'pressed' else 'off'
+        
+        conn = None
+        try:
+            conn = db.get_connection()
+            if conn is None:
+                raise Exception("Could not get database connection")
+            
+            cursor = conn.cursor()
+            
+            cursor.execute("""
+                INSERT INTO signals_log (signal_name, value, source, timestamp)
+                VALUES (%s, %s, %s, %s)
+            """, ('button', new_button_state, 'GUI', datetime.now().isoformat()))
+            
+            cursor.execute("""
+                INSERT INTO signals_log (signal_name, value, source, timestamp)
+                VALUES (%s, %s, %s, %s)
+            """, ('led', new_led_state, 'GUI', datetime.now().isoformat()))
+            
+            conn.commit()
+            
+            self.current_button_state = new_button_state
+            self.current_led_state = new_led_state
+            self.car_lamp_widget.set_state(new_led_state == 'on')
+            self.broadcast_state()
+            self.log(f"Button toggled to {new_button_state}, LED to {new_led_state}")
+            
+            self.update_ui()
+        except Exception as e:
+            self.log(f"Error toggling button: {str(e)}")
+        finally:
+            if conn and conn.is_connected():
+                conn.close()
+
+    def on_pwf_state_change(self, button):
+        new_state = button.text()
+        
+        if (self.current_pwf_state == 'P' and new_state == 'F') or \
+           (self.current_pwf_state == 'F' and new_state == 'P'):
+            self.log(f"Invalid PWF transition from {self.current_pwf_state} to {new_state}")
+            self.blockSignals(True)
+            for btn in self.pwf_group.buttons():
+                btn.setChecked(btn.text() == self.current_pwf_state)
+            self.blockSignals(False)
+            return
+            
+        conn = None
+        try:
+            conn = db.get_connection()
+            if conn is None:
+                raise Exception("Could not get database connection")
+            
+            cursor = conn.cursor()
+            
+            # First get the max ID
+            cursor.execute("SELECT MAX(id) FROM pwf_state")
+            max_id = cursor.fetchone()[0]
+            
+            if max_id:
+                # Update using the max ID directly
+                cursor.execute("""
+                    UPDATE pwf_state 
+                    SET state = %s, timestamp = CURRENT_TIMESTAMP
+                    WHERE id = %s
+                """, (new_state, max_id))
+                
+                cursor.execute("""
+                    INSERT INTO signals_log (signal_name, value, source, timestamp)
+                    VALUES (%s, %s, %s, %s)
+                """, ('pwf_state_change', new_state, 'GUI', datetime.now().isoformat()))
+                
+                conn.commit()
+                
+                self.current_pwf_state = new_state
+                
+                if new_state in ['P', 'S'] and self.current_led_state == 'on':
+                    self.current_led_state = 'off'
+                    self.car_lamp_widget.set_state(False)
+                    self._update_led_in_db('off')
+                
+                self.broadcast_state()
+                self.log(f"PWF state changed to {new_state}")
+                self.update_ui()
+        except Exception as e:
+            self.log(f"Error changing PWF state: {str(e)}")
+            self.blockSignals(True)
+            for btn in self.pwf_group.buttons():
+                btn.setChecked(btn.text() == self.current_pwf_state)
+            self.blockSignals(False)
+        finally:
+            if conn and conn.is_connected():
+                conn.close()
+
+    def check_pwf_state(self):
+        conn = None
+        try:
+            conn = db.get_connection()
+            if conn is None:
+                self.connection_status.setText(f"Peers: {len(self.socket_manager.peers)} | DB: Offline")
+                return
+
+            cursor = conn.cursor()
+            
+            # First get the max ID separately
+            cursor.execute("SELECT MAX(id) FROM pwf_state")
+            max_id = cursor.fetchone()[0]
+            
+            if max_id:
+                # Then check the timestamp
+                cursor.execute("SELECT timestamp FROM pwf_state WHERE id = %s", (max_id,))
+                result = cursor.fetchone()
+                
+                if result:
+                    last_change = result[0]
+                    if (datetime.now() - last_change).total_seconds() > 10 and self.current_pwf_state != 'P':
+                        # Update using the max ID directly
+                        cursor.execute("""
+                            UPDATE pwf_state 
+                            SET state = 'P', timestamp = CURRENT_TIMESTAMP
+                            WHERE id = %s
+                        """, (max_id,))
+                        
+                        cursor.execute("""
+                            INSERT INTO signals_log (signal_name, value, source, timestamp)
+                            VALUES (%s, %s, %s, %s)
+                        """, ('pwf_state_change', 'P', 'System', datetime.now().isoformat()))
+                        
+                        conn.commit()
+                        self.current_pwf_state = 'P'
+                        self._update_pwf_buttons()
+                        
+                        if self.current_led_state == 'on':
+                            self.current_led_state = 'off'
+                            self.car_lamp_widget.set_state(False)
+                            self._update_led_in_db('off')
+                        
+                        self.broadcast_state()
+                        self.log("PWF state automatically reset to P")
+            
+        except Exception as e:
+            self.log(f"Error checking PWF state: {str(e)}")
+        finally:
+            if conn and conn.is_connected():
+                conn.close()
+
+    def load_initial_state(self):
+        conn = None
+        try:
+            conn = db.get_connection()
+            if conn is None:
+                return
+                
+            cursor = conn.cursor()
+            
+            cursor.execute("SELECT state FROM pwf_state ORDER BY id DESC LIMIT 1")
+            pwf_state = cursor.fetchone()
+            if pwf_state:
+                self.current_pwf_state = pwf_state[0]
+                self._update_pwf_buttons()
+                self.log(f"Initial PWF state loaded: {self.current_pwf_state}")
+            
+            cursor.execute("SELECT value FROM signals_log WHERE signal_name = 'led' ORDER BY id DESC LIMIT 1")
+            led_state = cursor.fetchone()
+            if led_state:
+                self.current_led_state = led_state[0]
+                self.car_lamp_widget.set_state(self.current_led_state == 'on')
+                self.log(f"Initial LED state loaded: {self.current_led_state}")
+            
+            cursor.execute("SELECT value FROM signals_log WHERE signal_name = 'button' ORDER BY id DESC LIMIT 1")
+            button_state = cursor.fetchone()
+            if button_state:
+                self.current_button_state = button_state[0]
+                self.log(f"Initial button state loaded: {self.current_button_state}")
+            
+            self.update_ui()
+            self.broadcast_state()
+        except Exception as e:
+            self.log(f"Error loading initial state: {str(e)}")
+        finally:
+            if conn and conn.is_connected():
+                conn.close()
+
+    def _update_pwf_buttons(self):
+        self.blockSignals(True)
+        for button in self.pwf_group.buttons():
+            button.setChecked(button.text() == self.current_pwf_state)
+            button.setEnabled(True)
+        self.blockSignals(False)
+
+    def update_ui(self):
+        status_text = f"LAMPS ARE {self.current_led_state.upper()} (PWF: {self.current_pwf_state})"
+        self.status_label.setText(status_text)
+        
+        self.toggle_btn.setText(f"TOGGLE\nBUTTON ({self.current_button_state.replace('_', ' ').title()})")
+        self.toggle_btn.setEnabled(self.current_pwf_state in ['W', 'F'])
+
+    def log(self, message):
+        timestamp = datetime.now().strftime('%H:%M:%S')
+        self.log_box.append(f"[{timestamp}] {message}")
+        self.log_box.verticalScrollBar().setValue(self.log_box.verticalScrollBar().maximum())
 
     def closeEvent(self, event):
-        if hasattr(self, 'db_watcher') and self.db_watcher is not None:
-            self.db_watcher.stop()
-        if hasattr(self, 'movie'):
-            self.movie.stop()
         if hasattr(self, 'pwf_timer') and self.pwf_timer.isActive():
             self.pwf_timer.stop()
+        if hasattr(self, 'signals_watcher') and self.signals_watcher.isActive():
+            self.signals_watcher.stop()
+        if hasattr(self, 'socket_manager'):
+            self.socket_manager.stop()
+            
+        time.sleep(0.5)
         super().closeEvent(event)
+
+if __name__ == '__main__':
+    from PyQt5.QtWidgets import QApplication
+    app = QApplication(sys.argv)
+    window = ManualWindow()
+    window.show()
+    sys.exit(app.exec_())

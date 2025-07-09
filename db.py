@@ -1,6 +1,7 @@
 import mysql.connector
 from mysql.connector import Error, pooling
 from datetime import datetime
+import time
 
 # Database Configuration
 DB_CONFIG = {
@@ -11,16 +12,25 @@ DB_CONFIG = {
     'auth_plugin': 'mysql_native_password',
     'database': 'iot_system',
     'pool_name': 'iot_pool',
-    'pool_size': 5
+    'pool_size': 10  # Increased from 5
 }
 
-# Create connection pool
+# Create connection pool with retries
 connection_pool = None
-try:
-    connection_pool = pooling.MySQLConnectionPool(**DB_CONFIG)
-    print("✅ Connection pool created successfully!")
-except Error as e:
-    print(f"❌ Error creating connection pool: {e}")
+max_retries = 3
+retry_delay = 2  # seconds
+
+for attempt in range(max_retries):
+    try:
+        connection_pool = pooling.MySQLConnectionPool(**DB_CONFIG)
+        print("✅ Connection pool created successfully!")
+        break
+    except Error as e:
+        print(f"❌ Attempt {attempt+1} failed: {e}")
+        if attempt < max_retries - 1:
+            time.sleep(retry_delay)
+else:
+    print("❌ Failed to create connection pool after multiple attempts")
 
 def get_connection():
     """Get a connection from the pool"""
@@ -30,6 +40,13 @@ def get_connection():
     try:
         conn = connection_pool.get_connection()
         conn.autocommit = False
+        
+        # Test the connection is actually working
+        cursor = conn.cursor()
+        cursor.execute("SELECT 1")
+        cursor.fetchall()
+        cursor.close()
+        
         return conn
     except Error as e:
         print(f"Error getting connection from pool: {e}")
