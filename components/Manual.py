@@ -125,7 +125,8 @@ class ManualWindow(QWidget):
         # Initialize states
         self.current_led_state = 'off'
         self.current_button_state = 'not pressed'
-        self.current_pwf_state = None  # Changed from 'P' to None
+        self.current_pwf_state = None
+        self.protocol = 'CAN'  # Default protocol
         self.last_db_change = None
 
         # Socket communication
@@ -293,6 +294,48 @@ class ManualWindow(QWidget):
         self.pwf_group.addButton(self.f_btn)
         self.pwf_group.buttonClicked.connect(self.on_pwf_state_change)
 
+        # Protocol selection buttons
+        self.protocol_group = QButtonGroup(self)
+        
+        # Modified CAN and LIN button styles for larger size and text
+        protocol_button_style = """
+            QPushButton {
+                background-color: #404040;
+                border: 2px solid #151515;
+                border-radius: 8px; /* Slightly larger radius for better aesthetics */
+                color: white;
+                padding: 15px 25px; /* Increased padding */
+                font-size: 20pt; /* Larger font size */
+                min-width: 120px; /* Increased minimum width */
+                min-height: 70px; /* Increased minimum height */
+            }
+            QPushButton:checked {
+                background-color: #606060;
+                border: 3px solid #00ff00; /* Thicker border when checked */
+                color: #00ff00;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background-color: #505050;
+            }
+            QPushButton:pressed {
+                background-color: #303030;
+            }
+        """
+
+        self.can_btn = QPushButton('CAN')
+        self.can_btn.setCheckable(True)
+        self.can_btn.setChecked(True)
+        self.can_btn.setStyleSheet(protocol_button_style)
+        
+        self.lin_btn = QPushButton('LIN')
+        self.lin_btn.setCheckable(True)
+        self.lin_btn.setStyleSheet(protocol_button_style)
+        
+        self.protocol_group.addButton(self.can_btn)
+        self.protocol_group.addButton(self.lin_btn)
+        self.protocol_group.buttonClicked.connect(self.on_protocol_change)
+
         top_bar = QHBoxLayout()
         pwf_label = QLabel("PWF State:")
         pwf_label.setFont(QFont('Arial', 16))
@@ -301,6 +344,16 @@ class ManualWindow(QWidget):
         top_bar.addWidget(self.s_btn)
         top_bar.addWidget(self.w_btn)
         top_bar.addWidget(self.f_btn)
+        top_bar.addSpacing(20)
+        
+        # Add protocol selection
+        protocol_label = QLabel("Protocol:")
+        protocol_label.setFont(QFont('Arial', 16))
+        top_bar.addWidget(protocol_label)
+        top_bar.addWidget(self.can_btn)
+        top_bar.addWidget(self.lin_btn)
+        top_bar.addSpacing(20)
+        
         top_bar.addStretch()
         top_bar.addWidget(self.connection_status)
         top_bar.addWidget(self.back_btn)
@@ -328,6 +381,10 @@ class ManualWindow(QWidget):
         self.toggle_btn.clicked.connect(self.toggle_button)
         self.update_ui()
 
+    def on_protocol_change(self, button):
+        self.protocol = button.text()
+        self.log(f"Protocol changed to {self.protocol}")
+
     def go_back(self):
         """Return to main window"""
         try:
@@ -350,12 +407,17 @@ class ManualWindow(QWidget):
                 
             self.blockSignals(True)
             
+            # Update protocol display (but don't change our local protocol)
+            protocol = message.get('protocol', 'CAN')
+            self.can_btn.setChecked(protocol == 'CAN')
+            self.lin_btn.setChecked(protocol == 'LIN')
+            
             if 'pwf_state' in message:
                 new_pwf_state = message['pwf_state']
                 if new_pwf_state != self.current_pwf_state:
                     self.current_pwf_state = new_pwf_state
                     self._update_pwf_buttons()
-                    self.log(f"PWF state updated via socket to {new_pwf_state}")
+                    self.log(f"PWF state updated via socket to {new_pwf_state} (via {protocol})")
                     
                     if new_pwf_state in ['P', 'S'] and self.current_led_state == 'on':
                         self.current_led_state = 'off'
@@ -367,7 +429,7 @@ class ManualWindow(QWidget):
                     if new_led_state != self.current_led_state:
                         self.current_led_state = new_led_state
                         self.car_lamp_widget.set_state(new_led_state == 'on')
-                        self.log(f"LED state updated via socket to {new_led_state}")
+                        self.log(f"LED state updated via socket to {new_led_state} (via {protocol})")
                 elif message['led_state'] == 'on':
                     self.current_led_state = 'off'
                     self.car_lamp_widget.set_state(False)
@@ -376,7 +438,7 @@ class ManualWindow(QWidget):
                 new_button_state = message['button_state']
                 if new_button_state != self.current_button_state:
                     self.current_button_state = new_button_state
-                    self.log(f"Button state updated via socket to {new_button_state}")
+                    self.log(f"Button state updated via socket to {new_button_state} (via {protocol})")
                     
                     if self.current_pwf_state in ['W', 'F']:
                         new_led = 'on' if new_button_state == 'pressed' else 'off'
@@ -397,6 +459,7 @@ class ManualWindow(QWidget):
             'led_state': self.current_led_state,
             'button_state': self.current_button_state,
             'pwf_state': self.current_pwf_state,
+            'protocol': self.protocol,
             'source': f"GUI_{socket.gethostname()}",
             'timestamp': datetime.now().isoformat()
         }
@@ -454,27 +517,27 @@ class ManualWindow(QWidget):
                         self.car_lamp_widget.set_state(False)
                         self._update_led_in_db('off')
             
-            cursor.execute("SELECT value FROM signals_log WHERE signal_name = 'led' ORDER BY id DESC LIMIT 1")
+            cursor.execute("SELECT value, protocol FROM signals_log WHERE signal_name = 'led' ORDER BY id DESC LIMIT 1")
             led_result = cursor.fetchone()
             if led_result:
-                new_led_state = led_result[0]
+                new_led_state, protocol = led_result
                 if self.current_pwf_state in ['W', 'F']:
                     if new_led_state != self.current_led_state:
                         self.current_led_state = new_led_state
                         self.car_lamp_widget.set_state(new_led_state == 'on')
-                        self.log(f"LED state updated from DB to {new_led_state}")
+                        self.log(f"LED state updated from DB to {new_led_state} (via {protocol})")
                 elif new_led_state == 'on':
                     self.current_led_state = 'off'
                     self.car_lamp_widget.set_state(False)
                     self._update_led_in_db('off')
             
-            cursor.execute("SELECT value FROM signals_log WHERE signal_name = 'button' ORDER BY id DESC LIMIT 1")
+            cursor.execute("SELECT value, protocol FROM signals_log WHERE signal_name = 'button' ORDER BY id DESC LIMIT 1")
             button_result = cursor.fetchone()
             if button_result:
-                new_button_state = button_result[0]
+                new_button_state, protocol = button_result
                 if new_button_state != self.current_button_state:
                     self.current_button_state = new_button_state
-                    self.log(f"Button state updated from DB to {new_button_state}")
+                    self.log(f"Button state updated from DB to {new_button_state} (via {protocol})")
                     
                     if self.current_pwf_state in ['W', 'F']:
                         new_led = 'on' if new_button_state == 'pressed' else 'off'
@@ -501,9 +564,9 @@ class ManualWindow(QWidget):
                 
             cursor = conn.cursor()
             cursor.execute("""
-                INSERT INTO signals_log (signal_name, value, source, timestamp)
-                VALUES (%s, %s, %s, %s)
-            """, ('led', state, 'GUI', datetime.now().isoformat()))
+                INSERT INTO signals_log (signal_name, value, source, timestamp, protocol)
+                VALUES (%s, %s, %s, %s, %s)
+            """, ('led', state, 'GUI', datetime.now().isoformat(), self.protocol))
             conn.commit()
             self.broadcast_state()
         except Exception as e:
@@ -529,14 +592,14 @@ class ManualWindow(QWidget):
             cursor = conn.cursor()
             
             cursor.execute("""
-                INSERT INTO signals_log (signal_name, value, source, timestamp)
-                VALUES (%s, %s, %s, %s)
-            """, ('button', new_button_state, 'GUI', datetime.now().isoformat()))
+                INSERT INTO signals_log (signal_name, value, source, timestamp, protocol)
+                VALUES (%s, %s, %s, %s, %s)
+            """, ('button', new_button_state, 'GUI', datetime.now().isoformat(), self.protocol))
             
             cursor.execute("""
-                INSERT INTO signals_log (signal_name, value, source, timestamp)
-                VALUES (%s, %s, %s, %s)
-            """, ('led', new_led_state, 'GUI', datetime.now().isoformat()))
+                INSERT INTO signals_log (signal_name, value, source, timestamp, protocol)
+                VALUES (%s, %s, %s, %s, %s)
+            """, ('led', new_led_state, 'GUI', datetime.now().isoformat(), self.protocol))
             
             conn.commit()
             
@@ -544,7 +607,7 @@ class ManualWindow(QWidget):
             self.current_led_state = new_led_state
             self.car_lamp_widget.set_state(new_led_state == 'on')
             self.broadcast_state()
-            self.log(f"Button toggled to {new_button_state}, LED to {new_led_state}")
+            self.log(f"Button toggled to {new_button_state}, LED to {new_led_state} (via {self.protocol})")
             
             self.update_ui()
         except Exception as e:
@@ -594,9 +657,9 @@ class ManualWindow(QWidget):
             
             # Log the state change
             cursor.execute("""
-                INSERT INTO signals_log (signal_name, value, source, timestamp)
-                VALUES (%s, %s, %s, %s)
-            """, ('pwf_state_change', new_state, 'GUI', datetime.now().isoformat()))
+                INSERT INTO signals_log (signal_name, value, source, timestamp, protocol)
+                VALUES (%s, %s, %s, %s, %s)
+            """, ('pwf_state_change', new_state, 'GUI', datetime.now().isoformat(), self.protocol))
             
             conn.commit()
             
@@ -608,7 +671,7 @@ class ManualWindow(QWidget):
                 self._update_led_in_db('off')
             
             self.broadcast_state()
-            self.log(f"PWF state changed to {new_state}")
+            self.log(f"PWF state changed to {new_state} (via {self.protocol})")
             self.update_ui()
         except Exception as e:
             self.log(f"Error changing PWF state: {str(e)}")
@@ -658,9 +721,9 @@ class ManualWindow(QWidget):
                     
                     # Log the state change
                     cursor.execute("""
-                        INSERT INTO signals_log (signal_name, value, source, timestamp)
-                        VALUES (%s, %s, %s, %s)
-                    """, ('pwf_state_change', 'P', 'System', datetime.now().isoformat()))
+                        INSERT INTO signals_log (signal_name, value, source, timestamp, protocol)
+                        VALUES (%s, %s, %s, %s, %s)
+                    """, ('pwf_state_change', 'P', 'System', datetime.now().isoformat(), 'SYSTEM'))
                     
                     conn.commit()
                     self.current_pwf_state = 'P'
@@ -703,18 +766,18 @@ class ManualWindow(QWidget):
             else:
                 self.log("No active PWF state found in database")
             
-            cursor.execute("SELECT value FROM signals_log WHERE signal_name = 'led' ORDER BY id DESC LIMIT 1")
+            cursor.execute("SELECT value, protocol FROM signals_log WHERE signal_name = 'led' ORDER BY id DESC LIMIT 1")
             led_state = cursor.fetchone()
             if led_state:
                 self.current_led_state = led_state[0]
                 self.car_lamp_widget.set_state(self.current_led_state == 'on')
-                self.log(f"Initial LED state loaded: {self.current_led_state}")
+                self.log(f"Initial LED state loaded: {self.current_led_state} (via {led_state[1]})")
             
-            cursor.execute("SELECT value FROM signals_log WHERE signal_name = 'button' ORDER BY id DESC LIMIT 1")
+            cursor.execute("SELECT value, protocol FROM signals_log WHERE signal_name = 'button' ORDER BY id DESC LIMIT 1")
             button_state = cursor.fetchone()
             if button_state:
                 self.current_button_state = button_state[0]
-                self.log(f"Initial button state loaded: {self.current_button_state}")
+                self.log(f"Initial button state loaded: {self.current_button_state} (via {button_state[1]})")
             
             self.update_ui()
             self.broadcast_state()
@@ -733,7 +796,7 @@ class ManualWindow(QWidget):
 
     def update_ui(self):
         if self.current_pwf_state:
-            status_text = f"LAMPS ARE {self.current_led_state.upper()} (PWF: {self.current_pwf_state})"
+            status_text = f"LAMPS ARE {self.current_led_state.upper()} (PWF: {self.current_pwf_state}, Protocol: {self.protocol})"
         else:
             status_text = "LAMPS ARE OFF (No PWF state selected)"
         self.status_label.setText(status_text)
