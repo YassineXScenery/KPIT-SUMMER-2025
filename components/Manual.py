@@ -143,11 +143,9 @@ class ManualWindow(QWidget):
         self.attempt_connection()
 
         # Setup timers
-        self.pwf_timer = QTimer(self)
-        self.pwf_timer.timeout.connect(self.check_pwf_state)
-        
         self.signals_watcher = QTimer(self)
         self.signals_watcher.timeout.connect(self.check_new_signals)
+        self.signals_watcher.start(1000)
 
     def init_ui(self):
         self.setStyleSheet("""
@@ -297,21 +295,20 @@ class ManualWindow(QWidget):
         # Protocol selection buttons
         self.protocol_group = QButtonGroup(self)
         
-        # Modified CAN and LIN button styles for larger size and text
         protocol_button_style = """
             QPushButton {
                 background-color: #404040;
                 border: 2px solid #151515;
-                border-radius: 8px; /* Slightly larger radius for better aesthetics */
+                border-radius: 8px;
                 color: white;
-                padding: 15px 25px; /* Increased padding */
-                font-size: 20pt; /* Larger font size */
-                min-width: 120px; /* Increased minimum width */
-                min-height: 70px; /* Increased minimum height */
+                padding: 15px 25px;
+                font-size: 20pt;
+                min-width: 120px;
+                min-height: 70px;
             }
             QPushButton:checked {
                 background-color: #606060;
-                border: 3px solid #00ff00; /* Thicker border when checked */
+                border: 3px solid #00ff00;
                 color: #00ff00;
                 font-weight: bold;
             }
@@ -346,7 +343,6 @@ class ManualWindow(QWidget):
         top_bar.addWidget(self.f_btn)
         top_bar.addSpacing(20)
         
-        # Add protocol selection
         protocol_label = QLabel("Protocol:")
         protocol_label.setFont(QFont('Arial', 16))
         top_bar.addWidget(protocol_label)
@@ -407,7 +403,6 @@ class ManualWindow(QWidget):
                 
             self.blockSignals(True)
             
-            # Update protocol display (but don't change our local protocol)
             protocol = message.get('protocol', 'CAN')
             self.can_btn.setChecked(protocol == 'CAN')
             self.lin_btn.setChecked(protocol == 'LIN')
@@ -474,8 +469,6 @@ class ManualWindow(QWidget):
                 cursor.fetchall()
                 conn.close()
                 
-                if not self.pwf_timer.isActive():
-                    self.pwf_timer.start(5000)
                 if not self.signals_watcher.isActive():
                     self.signals_watcher.start(1000)
                 
@@ -620,7 +613,6 @@ class ManualWindow(QWidget):
         new_state = button.text()
         current_state = self.current_pwf_state
         
-        # Define invalid transitions
         invalid_transitions = [
             ('P', 'F'), ('P', 'W'),
             ('F', 'P'), ('W', 'P')
@@ -642,20 +634,17 @@ class ManualWindow(QWidget):
             
             cursor = conn.cursor()
             
-            # First set all states to inactive (0)
             cursor.execute("""
                 UPDATE pwf_state 
                 SET is_active = 0
             """)
             
-            # Then set the new state to active (1)
             cursor.execute("""
                 UPDATE pwf_state 
                 SET is_active = 1, timestamp = CURRENT_TIMESTAMP
                 WHERE state = %s
             """, (new_state,))
             
-            # Log the state change
             cursor.execute("""
                 INSERT INTO signals_log (signal_name, value, source, timestamp, protocol)
                 VALUES (%s, %s, %s, %s, %s)
@@ -679,66 +668,6 @@ class ManualWindow(QWidget):
             for btn in self.pwf_group.buttons():
                 btn.setChecked(btn.text() == current_state)
             self.blockSignals(False)
-        finally:
-            if conn and conn.is_connected():
-                conn.close()
-
-    def check_pwf_state(self):
-        conn = None
-        try:
-            conn = db.get_connection()
-            if conn is None:
-                self.connection_status.setText(f"Peers: {len(self.socket_manager.peers)} | DB: Offline")
-                return
-
-            cursor = conn.cursor()
-            
-            # Check if the current active state has been active for more than 10 seconds
-            cursor.execute("""
-                SELECT state, timestamp 
-                FROM pwf_state 
-                WHERE is_active = 1
-                ORDER BY timestamp DESC 
-                LIMIT 1
-            """)
-            result = cursor.fetchone()
-            
-            if result:
-                state, last_change = result
-                if (datetime.now() - last_change).total_seconds() > 10 and state != 'P':
-                    # Set all states to inactive
-                    cursor.execute("""
-                        UPDATE pwf_state 
-                        SET is_active = 0
-                    """)
-                    
-                    # Set P to active
-                    cursor.execute("""
-                        UPDATE pwf_state 
-                        SET is_active = 1, timestamp = CURRENT_TIMESTAMP
-                        WHERE state = 'P'
-                    """)
-                    
-                    # Log the state change
-                    cursor.execute("""
-                        INSERT INTO signals_log (signal_name, value, source, timestamp, protocol)
-                        VALUES (%s, %s, %s, %s, %s)
-                    """, ('pwf_state_change', 'P', 'System', datetime.now().isoformat(), 'SYSTEM'))
-                    
-                    conn.commit()
-                    self.current_pwf_state = 'P'
-                    self._update_pwf_buttons()
-                    
-                    if self.current_led_state == 'on':
-                        self.current_led_state = 'off'
-                        self.car_lamp_widget.set_state(False)
-                        self._update_led_in_db('off')
-                    
-                    self.broadcast_state()
-                    self.log("PWF state automatically reset to P")
-        
-        except Exception as e:
-            self.log(f"Error checking PWF state: {str(e)}")
         finally:
             if conn and conn.is_connected():
                 conn.close()
@@ -810,8 +739,6 @@ class ManualWindow(QWidget):
         self.log_box.verticalScrollBar().setValue(self.log_box.verticalScrollBar().maximum())
 
     def closeEvent(self, event):
-        if hasattr(self, 'pwf_timer') and self.pwf_timer.isActive():
-            self.pwf_timer.stop()
         if hasattr(self, 'signals_watcher') and self.signals_watcher.isActive():
             self.signals_watcher.stop()
         if hasattr(self, 'socket_manager'):
