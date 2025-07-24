@@ -16,104 +16,8 @@ from PyQt5.QtGui import (
 )
 import db
 from .socket_manager import SocketManager
-
-class CarLampWidget(QLabel):
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        self.setMinimumSize(600, 300)
-        self.on = False
-        self.glow_intensity = 0
-        self.car_image = None
-        self.car_pos = 0
-        self.glow_timer = QTimer(self)
-        self.glow_timer.timeout.connect(self.update_glow)
-        self.glow_timer.start(50)
-        
-    def load_car_image(self, path):
-        if os.path.exists(path):
-            self.car_image = QPixmap(path)
-            self.car_image = self.car_image.scaled(600, 300, Qt.KeepAspectRatio, Qt.SmoothTransformation)
-        else:
-            print(f"Car image not found at: {path}")
-        
-    def set_state(self, on):
-        self.on = on
-        self.update()
-        
-    def move_left(self):
-        self.car_pos = max(-100, self.car_pos - 20)
-        self.update()
-        
-    def move_right(self):
-        self.car_pos = min(100, self.car_pos + 20)
-        self.update()
-        
-    def update_glow(self):
-        if self.on and self.glow_intensity < 100:
-            self.glow_intensity += 5
-        elif not self.on and self.glow_intensity > 0:
-            self.glow_intensity -= 5
-        self.update()
-        
-    def paintEvent(self, event):
-        painter = QPainter(self)
-        painter.setRenderHint(QPainter.Antialiasing)
-        
-        if self.car_image:
-            x_pos = self.car_pos + (self.width() - self.car_image.width()) // 2
-            y_pos = (self.height() - self.car_image.height()) // 2
-            painter.drawPixmap(x_pos, y_pos, self.car_image)
-            
-            if self.on or self.glow_intensity > 0:
-                left_light_pos = QPoint(x_pos + int(self.car_image.width()*0.25), 
-                                      y_pos + int(self.car_image.height()*0.5))
-                right_light_pos = QPoint(x_pos + int(self.car_image.width()*0.75), 
-                                       y_pos + int(self.car_image.height()*0.5))
-                
-                light_radius = int(self.width()*0.08)
-                
-                gradient = QRadialGradient(left_light_pos, light_radius*2)
-                gradient.setColorAt(0, QColor(255, 230, 180, int(200 * self.glow_intensity / 100)))
-                gradient.setColorAt(1, QColor(255, 200, 100, 0))
-                painter.setBrush(QBrush(gradient))
-                painter.setPen(Qt.NoPen)
-                painter.drawEllipse(left_light_pos, light_radius*2, light_radius*2)
-                
-                gradient = QRadialGradient(right_light_pos, light_radius*2)
-                gradient.setColorAt(0, QColor(255, 230, 180, int(200 * self.glow_intensity / 100)))
-                gradient.setColorAt(1, QColor(255, 200, 100, 0))
-                painter.setBrush(QBrush(gradient))
-                painter.drawEllipse(right_light_pos, light_radius*2, light_radius*2)
-
-class PhysicalButton(QPushButton):
-    def __init__(self, text, parent=None):
-        super().__init__(text, parent)
-        self.setMinimumSize(100, 100)
-        self.setFont(QFont('Arial', 14))
-        self.setStyleSheet("""
-            QPushButton {
-                background: qradialgradient(cx:0.5, cy:0.5, radius:0.7,
-                    stop:0 #606060, stop:0.6 #404040, stop:0.7 #303030);
-                border: 4px solid #151515;
-                border-radius: 50px;
-                color: #FFFFFF;
-                font-weight: bold;
-                font-size: 14px;
-            }
-            QPushButton:pressed:enabled {
-                background: qradialgradient(cx:0.5, cy:0.5, radius:0.7,
-                    stop:0 #404040, stop:0.6 #303030, stop:0.7 #202020);
-                padding-top: 4px;
-                padding-left: 4px;
-            }
-            QPushButton:disabled {
-                background: qradialgradient(cx:0.5, cy:0.5, radius:0.7,
-                    stop:0 #505050, stop:0.6 #404040, stop:0.7 #303030);
-                color: #888888;
-                border: 4px solid #151515;
-                padding: 0px;
-            }
-        """)
+from .LampControl import LampControl
+from .ControlButtons import ControlButton
 
 class ManualWindow(QWidget):
     def __init__(self, parent=None):
@@ -123,8 +27,6 @@ class ManualWindow(QWidget):
         self.resize(1000, 800)
         
         # Initialize states
-        self.current_led_state = 'off'
-        self.current_button_state = 'not pressed'
         self.current_pwf_state = None
         self.protocol = 'CAN'  # Default protocol
         self.last_db_change = None
@@ -170,13 +72,14 @@ class ManualWindow(QWidget):
         project_root = os.path.abspath(os.path.join(script_dir, os.pardir))
         car_path = os.path.join(project_root, "assets", "car.png")
         
-        self.car_lamp_widget = CarLampWidget()
+        self.car_lamp_widget = LampControl()
         if os.path.exists(car_path):
             self.car_lamp_widget.load_car_image(car_path)
         else:
             print(f"Warning: Car image not found at {car_path}")
-            
-        self.toggle_btn = PhysicalButton("TOGGLE\nBUTTON")
+
+        self.toggle_btn = ControlButton("CAN", self)
+        self.toggle_btnL = ControlButton("LIN", self)
         self.status_label = QLabel("LAMPS ARE OFF")
         self.status_label.setFont(QFont('Arial', 16))
         self.log_box = QTextEdit()
@@ -359,6 +262,7 @@ class ManualWindow(QWidget):
         control_frame = QFrame()
         control_layout = QHBoxLayout(control_frame)
         control_layout.addWidget(self.toggle_btn)
+        control_layout.addWidget(self.toggle_btnL)
         control_layout.addWidget(self.move_left_btn)
         control_layout.addWidget(self.car_lamp_widget)
         control_layout.addWidget(self.move_right_btn)
@@ -374,27 +278,14 @@ class ManualWindow(QWidget):
         main_layout.setSpacing(20)
 
         self.setLayout(main_layout)
-        self.toggle_btn.clicked.connect(self.toggle_button)
-        self.update_ui()
+
+        # Load initial states
+        self.load_initial_state()
 
     def on_protocol_change(self, button):
         self.protocol = button.text()
         self.log(f"Protocol changed to {self.protocol}")
-
-    def go_back(self):
-        """Return to main window"""
-        try:
-            script_dir = os.path.dirname(os.path.abspath(__file__))
-            project_root = os.path.dirname(script_dir)
-            if project_root not in sys.path:
-                sys.path.append(project_root)
-            from components.WelcomeWindow import WelcomeWindow
-            self.close()
-            self.welcome_window = WelcomeWindow()
-            self.welcome_window.show()
-        except Exception as e:
-            self.log(f"Error going back: {str(e)}")
-            print(f"Error going back: {str(e)}")
+        self.broadcast_state()
 
     def handle_socket_update(self, message):
         if message.get('type') == 'state_update':
@@ -402,7 +293,7 @@ class ManualWindow(QWidget):
                 return
                 
             self.blockSignals(True)
-            
+
             protocol = message.get('protocol', 'CAN')
             self.can_btn.setChecked(protocol == 'CAN')
             self.lin_btn.setChecked(protocol == 'LIN')
@@ -414,31 +305,60 @@ class ManualWindow(QWidget):
                     self._update_pwf_buttons()
                     self.log(f"PWF state updated via socket to {new_pwf_state} (via {protocol})")
                     
-                    if new_pwf_state in ['P', 'S'] and self.current_led_state == 'on':
-                        self.current_led_state = 'off'
-                        self.car_lamp_widget.set_state(False)
+                    if new_pwf_state in ['P', 'S']:
+                        if self.toggle_btn.current_led_state == 'on':
+                            self.toggle_btn.current_led_state = 'off'
+                            self.car_lamp_widget.set_state(False)
+                        if self.toggle_btnL.current_led_state == 'on':
+                            self.toggle_btnL.current_led_state = 'off'
+                            self.car_lamp_widget.set_state(False)
             
-            if 'led_state' in message:
-                if self.current_pwf_state in ['W', 'F']:
+            # Handle CAN signals
+            if 'led_state' in message and message['led_state'] is not None:
+                if self.current_pwf_state in ['W', 'F']:  # Only update in W/F modes
                     new_led_state = message['led_state']
-                    if new_led_state != self.current_led_state:
-                        self.current_led_state = new_led_state
+                    if new_led_state != self.toggle_btn.current_led_state:
+                        self.toggle_btn.current_led_state = new_led_state
                         self.car_lamp_widget.set_state(new_led_state == 'on')
-                        self.log(f"LED state updated via socket to {new_led_state} (via {protocol})")
+                        self.log(f"CAN LED state updated via socket to {new_led_state}")
                 elif message['led_state'] == 'on':
-                    self.current_led_state = 'off'
+                    self.toggle_btn.current_led_state = 'off'
                     self.car_lamp_widget.set_state(False)
             
-            if 'button_state' in message:
+            if 'button_state' in message and message['button_state'] is not None:
                 new_button_state = message['button_state']
-                if new_button_state != self.current_button_state:
-                    self.current_button_state = new_button_state
-                    self.log(f"Button state updated via socket to {new_button_state} (via {protocol})")
+                if new_button_state != self.toggle_btn.current_button_state:
+                    self.toggle_btn.current_button_state = new_button_state
+                    self.log(f"CAN Button state updated via socket to {new_button_state}")
                     
-                    if self.current_pwf_state in ['W', 'F']:
+                    if self.current_pwf_state in ['W', 'F']:  # Only update LED in W/F modes
                         new_led = 'on' if new_button_state == 'pressed' else 'off'
-                        if new_led != self.current_led_state:
-                            self.current_led_state = new_led
+                        if new_led != self.toggle_btn.current_led_state:
+                            self.toggle_btn.current_led_state = new_led
+                            self.car_lamp_widget.set_state(new_led == 'on')
+            
+            # Handle LIN signals
+            if 'ledL_state' in message and message['ledL_state'] is not None:
+                if self.current_pwf_state in ['W', 'F']:  # Only update in W/F modes
+                    new_led_state = message['ledL_state']
+                    if new_led_state != self.toggle_btnL.current_led_state:
+                        self.toggle_btnL.current_led_state = new_led_state
+                        self.car_lamp_widget.set_state(new_led_state == 'on')
+                        self.log(f"LIN LED state updated via socket to {new_led_state}")
+                elif message['ledL_state'] == 'on':
+                    self.toggle_btnL.current_led_state = 'off'
+                    self.car_lamp_widget.set_state(False)
+            
+            if 'buttonL_state' in message and message['buttonL_state'] is not None:
+                new_button_state = message['buttonL_state']
+                if new_button_state != self.toggle_btnL.current_button_state:
+                    self.toggle_btnL.current_button_state = new_button_state
+                    self.log(f"LIN Button state updated via socket to {new_button_state}")
+                    
+                    if self.current_pwf_state in ['W', 'F']:  # Only update LED in W/F modes
+                        new_led = 'on' if new_button_state == 'pressed' else 'off'
+                        if new_led != self.toggle_btnL.current_led_state:
+                            self.toggle_btnL.current_led_state = new_led
                             self.car_lamp_widget.set_state(new_led == 'on')
             
             self.update_ui()
@@ -451,8 +371,10 @@ class ManualWindow(QWidget):
     def broadcast_state(self):
         message = {
             'type': 'state_update',
-            'led_state': self.current_led_state,
-            'button_state': self.current_button_state,
+            'led_state': self.toggle_btn.current_led_state,
+            'ledL_state': self.toggle_btnL.current_led_state,
+            'button_state': self.toggle_btn.current_button_state,
+            'buttonL_state': self.toggle_btnL.current_button_state,
             'pwf_state': self.current_pwf_state,
             'protocol': self.protocol,
             'source': f"GUI_{socket.gethostname()}",
@@ -496,6 +418,7 @@ class ManualWindow(QWidget):
                 
             cursor = conn.cursor()
             
+            # Check PWF state
             cursor.execute("SELECT state FROM pwf_state WHERE is_active = 1 ORDER BY timestamp DESC LIMIT 1")
             pwf_result = cursor.fetchone()
             if pwf_result:
@@ -505,39 +428,81 @@ class ManualWindow(QWidget):
                     self._update_pwf_buttons()
                     self.log(f"PWF state updated from DB to {new_pwf_state}")
                     
-                    if new_pwf_state in ['P', 'S'] and self.current_led_state == 'on':
-                        self.current_led_state = 'off'
-                        self.car_lamp_widget.set_state(False)
-                        self._update_led_in_db('off')
-            
-            cursor.execute("SELECT value, protocol FROM signals_log WHERE signal_name = 'led' ORDER BY id DESC LIMIT 1")
-            led_result = cursor.fetchone()
-            if led_result:
-                new_led_state, protocol = led_result
-                if self.current_pwf_state in ['W', 'F']:
-                    if new_led_state != self.current_led_state:
-                        self.current_led_state = new_led_state
-                        self.car_lamp_widget.set_state(new_led_state == 'on')
-                        self.log(f"LED state updated from DB to {new_led_state} (via {protocol})")
-                elif new_led_state == 'on':
-                    self.current_led_state = 'off'
-                    self.car_lamp_widget.set_state(False)
-                    self._update_led_in_db('off')
-            
-            cursor.execute("SELECT value, protocol FROM signals_log WHERE signal_name = 'button' ORDER BY id DESC LIMIT 1")
-            button_result = cursor.fetchone()
-            if button_result:
-                new_button_state, protocol = button_result
-                if new_button_state != self.current_button_state:
-                    self.current_button_state = new_button_state
-                    self.log(f"Button state updated from DB to {new_button_state} (via {protocol})")
+                    if new_pwf_state in ['P', 'S']:
+                        if self.toggle_btn.current_led_state == 'on':
+                            self.toggle_btn.current_led_state = 'off'
+                            self.car_lamp_widget.set_state(False)
+                            self._update_led_in_db('off', 'CAN')
+                        if self.toggle_btnL.current_led_state == 'on':
+                            self.toggle_btnL.current_led_state = 'off'
+                            self.car_lamp_widget.set_state(False)
+                            self._update_led_in_db('off', 'LIN')
+
+            # Check for CAN signals
+            cursor.execute("""
+                SELECT value FROM signals_log 
+                WHERE signal_name = 'led' AND protocol = 'CAN'
+                ORDER BY timestamp DESC LIMIT 1
+            """)
+            can_led_result = cursor.fetchone()
+            if can_led_result and self.current_pwf_state in ['W', 'F']:  # Only update in W/F modes
+                new_led_state = can_led_result[0]
+                if new_led_state != self.toggle_btn.current_led_state:
+                    self.toggle_btn.current_led_state = new_led_state
+                    self.car_lamp_widget.set_state(new_led_state == 'on')
+                    self.log(f"CAN LED state updated from DB to {new_led_state}")
+
+            cursor.execute("""
+                SELECT value FROM signals_log 
+                WHERE signal_name = 'button' AND protocol = 'CAN'
+                ORDER BY timestamp DESC LIMIT 1
+            """)
+            can_button_result = cursor.fetchone()
+            if can_button_result:
+                new_button_state = can_button_result[0]
+                if new_button_state != self.toggle_btn.current_button_state:
+                    self.toggle_btn.current_button_state = new_button_state
+                    self.log(f"CAN Button state updated from DB to {new_button_state}")
                     
-                    if self.current_pwf_state in ['W', 'F']:
+                    if self.current_pwf_state in ['W', 'F']:  # Only update LED in W/F modes
                         new_led = 'on' if new_button_state == 'pressed' else 'off'
-                        if new_led != self.current_led_state:
-                            self.current_led_state = new_led
+                        if new_led != self.toggle_btn.current_led_state:
+                            self.toggle_btn.current_led_state = new_led
                             self.car_lamp_widget.set_state(new_led == 'on')
-                            self._update_led_in_db(new_led)
+                            self._update_led_in_db(new_led, 'CAN')
+
+            # Check for LIN signals
+            cursor.execute("""
+                SELECT value FROM signals_log 
+                WHERE signal_name = 'ledL' AND protocol = 'LIN'
+                ORDER BY timestamp DESC LIMIT 1
+            """)
+            lin_led_result = cursor.fetchone()
+            if lin_led_result and self.current_pwf_state in ['W', 'F']:  # Only update in W/F modes
+                new_led_state = lin_led_result[0]
+                if new_led_state != self.toggle_btnL.current_led_state:
+                    self.toggle_btnL.current_led_state = new_led_state
+                    self.car_lamp_widget.set_state(new_led_state == 'on')
+                    self.log(f"LIN LED state updated from DB to {new_led_state}")
+
+            cursor.execute("""
+                SELECT value FROM signals_log 
+                WHERE signal_name = 'buttonL' AND protocol = 'LIN'
+                ORDER BY timestamp DESC LIMIT 1
+            """)
+            lin_button_result = cursor.fetchone()
+            if lin_button_result:
+                new_button_state = lin_button_result[0]
+                if new_button_state != self.toggle_btnL.current_button_state:
+                    self.toggle_btnL.current_button_state = new_button_state
+                    self.log(f"LIN Button state updated from DB to {new_button_state}")
+                    
+                    if self.current_pwf_state in ['W', 'F']:  # Only update LED in W/F modes
+                        new_led = 'on' if new_button_state == 'pressed' else 'off'
+                        if new_led != self.toggle_btnL.current_led_state:
+                            self.toggle_btnL.current_led_state = new_led
+                            self.car_lamp_widget.set_state(new_led == 'on')
+                            self._update_led_in_db(new_led, 'LIN')
             
             self.update_ui()
             
@@ -548,7 +513,7 @@ class ManualWindow(QWidget):
             if conn and conn.is_connected():
                 conn.close()
 
-    def _update_led_in_db(self, state):
+    def _update_led_in_db(self, state, protocol):
         conn = None
         try:
             conn = db.get_connection()
@@ -556,55 +521,15 @@ class ManualWindow(QWidget):
                 return
                 
             cursor = conn.cursor()
+            signal_name = 'led' if protocol == 'CAN' else 'ledL'
             cursor.execute("""
                 INSERT INTO signals_log (signal_name, value, source, timestamp, protocol)
                 VALUES (%s, %s, %s, %s, %s)
-            """, ('led', state, 'GUI', datetime.now().isoformat(), self.protocol))
+            """, (signal_name, state, 'GUI', datetime.now().isoformat(), protocol))
             conn.commit()
             self.broadcast_state()
         except Exception as e:
             self.log(f"Error updating LED in DB: {str(e)}")
-        finally:
-            if conn and conn.is_connected():
-                conn.close()
-
-    def toggle_button(self):
-        if self.current_pwf_state in ['P', 'S']:
-            self.log("Button disabled in P/S modes")
-            return
-            
-        new_button_state = 'pressed' if self.current_button_state == 'not pressed' else 'not pressed'
-        new_led_state = 'on' if new_button_state == 'pressed' else 'off'
-        
-        conn = None
-        try:
-            conn = db.get_connection()
-            if conn is None:
-                raise Exception("Could not get database connection")
-            
-            cursor = conn.cursor()
-            
-            cursor.execute("""
-                INSERT INTO signals_log (signal_name, value, source, timestamp, protocol)
-                VALUES (%s, %s, %s, %s, %s)
-            """, ('button', new_button_state, 'GUI', datetime.now().isoformat(), self.protocol))
-            
-            cursor.execute("""
-                INSERT INTO signals_log (signal_name, value, source, timestamp, protocol)
-                VALUES (%s, %s, %s, %s, %s)
-            """, ('led', new_led_state, 'GUI', datetime.now().isoformat(), self.protocol))
-            
-            conn.commit()
-            
-            self.current_button_state = new_button_state
-            self.current_led_state = new_led_state
-            self.car_lamp_widget.set_state(new_led_state == 'on')
-            self.broadcast_state()
-            self.log(f"Button toggled to {new_button_state}, LED to {new_led_state} (via {self.protocol})")
-            
-            self.update_ui()
-        except Exception as e:
-            self.log(f"Error toggling button: {str(e)}")
         finally:
             if conn and conn.is_connected():
                 conn.close()
@@ -644,7 +569,7 @@ class ManualWindow(QWidget):
                 SET is_active = 1, timestamp = CURRENT_TIMESTAMP
                 WHERE state = %s
             """, (new_state,))
-            
+
             cursor.execute("""
                 INSERT INTO signals_log (signal_name, value, source, timestamp, protocol)
                 VALUES (%s, %s, %s, %s, %s)
@@ -654,10 +579,15 @@ class ManualWindow(QWidget):
             
             self.current_pwf_state = new_state
             
-            if new_state in ['P', 'S'] and self.current_led_state == 'on':
-                self.current_led_state = 'off'
-                self.car_lamp_widget.set_state(False)
-                self._update_led_in_db('off')
+            if new_state in ['P', 'S']:
+                if self.toggle_btn.current_led_state == 'on':
+                    self.toggle_btn.current_led_state = 'off'
+                    self.car_lamp_widget.set_state(False)
+                    self._update_led_in_db('off', 'CAN')
+                if self.toggle_btnL.current_led_state == 'on':
+                    self.toggle_btnL.current_led_state = 'off'
+                    self.car_lamp_widget.set_state(False)
+                    self._update_led_in_db('off', 'LIN')
             
             self.broadcast_state()
             self.log(f"PWF state changed to {new_state} (via {self.protocol})")
@@ -694,19 +624,50 @@ class ManualWindow(QWidget):
                 self.log(f"Initial PWF state loaded: {self.current_pwf_state}")
             else:
                 self.log("No active PWF state found in database")
-            
-            cursor.execute("SELECT value, protocol FROM signals_log WHERE signal_name = 'led' ORDER BY id DESC LIMIT 1")
-            led_state = cursor.fetchone()
-            if led_state:
-                self.current_led_state = led_state[0]
-                self.car_lamp_widget.set_state(self.current_led_state == 'on')
-                self.log(f"Initial LED state loaded: {self.current_led_state} (via {led_state[1]})")
-            
-            cursor.execute("SELECT value, protocol FROM signals_log WHERE signal_name = 'button' ORDER BY id DESC LIMIT 1")
-            button_state = cursor.fetchone()
-            if button_state:
-                self.current_button_state = button_state[0]
-                self.log(f"Initial button state loaded: {self.current_button_state} (via {button_state[1]})")
+
+            # Load CAN states
+            cursor.execute("""
+                SELECT value FROM signals_log 
+                WHERE signal_name = 'led' AND protocol = 'CAN'
+                ORDER BY timestamp DESC LIMIT 1
+            """)
+            can_led_state = cursor.fetchone()
+            if can_led_state:
+                self.toggle_btn.current_led_state = can_led_state[0]
+                if self.current_pwf_state in ['W', 'F']:  # Only set LED state in W/F modes
+                    self.car_lamp_widget.set_state(can_led_state[0] == 'on')
+                self.log(f"Initial CAN LED state loaded: {can_led_state[0]}")
+
+            cursor.execute("""
+                SELECT value FROM signals_log 
+                WHERE signal_name = 'button' AND protocol = 'CAN'
+                ORDER BY timestamp DESC LIMIT 1
+            """)
+            can_button_state = cursor.fetchone()
+            if can_button_state:
+                self.toggle_btn.current_button_state = can_button_state[0]
+                self.log(f"Initial CAN button state loaded: {can_button_state[0]}")
+
+            # Load LIN states
+            cursor.execute("""
+                SELECT value FROM signals_log 
+                WHERE signal_name = 'ledL' AND protocol = 'LIN'
+                ORDER BY timestamp DESC LIMIT 1
+            """)
+            lin_led_state = cursor.fetchone()
+            if lin_led_state:
+                self.toggle_btnL.current_led_state = lin_led_state[0]
+                self.log(f"Initial LIN LED state loaded: {lin_led_state[0]}")
+
+            cursor.execute("""
+                SELECT value FROM signals_log 
+                WHERE signal_name = 'buttonL' AND protocol = 'LIN'
+                ORDER BY timestamp DESC LIMIT 1
+            """)
+            lin_button_state = cursor.fetchone()
+            if lin_button_state:
+                self.toggle_btnL.current_button_state = lin_button_state[0]
+                self.log(f"Initial LIN button state loaded: {lin_button_state[0]}")
             
             self.update_ui()
             self.broadcast_state()
@@ -725,13 +686,13 @@ class ManualWindow(QWidget):
 
     def update_ui(self):
         if self.current_pwf_state:
-            status_text = f"LAMPS ARE {self.current_led_state.upper()} (PWF: {self.current_pwf_state}, Protocol: {self.protocol})"
+            status_text = f"LAMPS ARE {self.toggle_btn.current_led_state.upper() if self.protocol == 'CAN' else self.toggle_btnL.current_led_state.upper()} (PWF: {self.current_pwf_state}, Protocol: {self.protocol})"
         else:
             status_text = "LAMPS ARE OFF (No PWF state selected)"
         self.status_label.setText(status_text)
         
-        self.toggle_btn.setText(f"TOGGLE\nBUTTON ({self.current_button_state.replace('_', ' ').title()})")
-        self.toggle_btn.setEnabled(self.current_pwf_state in ['W', 'F'])
+        self.toggle_btn.setText(f"TOGGLE\nBUTTON CAN ({self.toggle_btn.current_button_state.replace('_', ' ').title()})")
+        self.toggle_btnL.setText(f"TOGGLE\nBUTTON LIN ({self.toggle_btnL.current_button_state.replace('_', ' ').title()})")
 
     def log(self, message):
         timestamp = datetime.now().strftime('%H:%M:%S')
@@ -746,6 +707,21 @@ class ManualWindow(QWidget):
             
         time.sleep(0.5)
         super().closeEvent(event)
+    
+    def go_back(self):
+        """Return to main window"""
+        try:
+            script_dir = os.path.dirname(os.path.abspath(__file__))
+            project_root = os.path.dirname(script_dir)
+            if project_root not in sys.path:
+                sys.path.append(project_root)
+            from components.WelcomeWindow import WelcomeWindow
+            self.close()
+            self.welcome_window = WelcomeWindow()
+            self.welcome_window.show()
+        except Exception as e:
+            self.log(f"Error going back: {str(e)}")
+            print(f"Error going back: {str(e)}")
 
 if __name__ == '__main__':
     from PyQt5.QtWidgets import QApplication

@@ -1,0 +1,890 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<robot generator="Robot 7.3.2 (Python 3.13.5 on win32)" generated="2025-07-21T12:15:48.988280" rpa="false" schemaversion="5">
+<suite id="s1" name="LightFunctionality" source="C:\Users\DELL\Desktop\KPIT\KPIT-SUMMER-2025\components\robot_tests\test_cases\LightFunctionality.robot">
+<kw name="Connect To Database And Initialize Test" type="SETUP">
+<kw name="Connect To Database" owner="CommonKeywords">
+<kw name="Connect To Database Using Custom Params" owner="DatabaseLibrary">
+<msg time="2025-07-21T12:15:49.029350" level="WARN">Keyword 'DatabaseLibrary.Connect To Database Using Custom Params' is deprecated. Use new `Connect To Database` keyword with custom parameters instead.
+The deprecated keyword will be removed in future versions.</msg>
+<msg time="2025-07-21T12:15:49.039646" level="INFO">Executing : Connect To Database Using Custom Params : pymysql.connect(db_api_2.connect(database='iot_system', user='user', password=***, host='10.20.0.104', port=3306))</msg>
+<arg>pymysql</arg>
+<arg>database='${DB_NAME}', user='${DB_USER}', password='${DB_PASSWORD}', host='${DB_HOST}', port=${DB_PORT}</arg>
+<doc>*DEPRECATED* Use new `Connect To Database` keyword with custom parameters instead.
+The deprecated keyword will be removed in future versions.</doc>
+<status status="PASS" start="2025-07-21T12:15:49.029326" elapsed="0.029759"/>
+</kw>
+<status status="PASS" start="2025-07-21T12:15:49.028826" elapsed="0.030370"/>
+</kw>
+<kw name="Initialize Light Test" owner="LightFunctionalityKeywords">
+<kw name="Set LED State" owner="CommonKeywords">
+<kw name="Execute Sql String" owner="DatabaseLibrary">
+<msg time="2025-07-21T12:15:49.059829" level="INFO" html="true">Executing sql:&lt;br&gt;&lt;code style="font-weight: bold;"&gt;INSERT INTO signals_log (signal_name, value, source, timestamp, protocol) VALUES ('led', 'off', 'ROBOT', CURRENT_TIMESTAMP, 'CAN')&lt;/code&gt;</msg>
+<msg time="2025-07-21T12:15:49.064204" level="INFO">Commit the transaction</msg>
+<arg>INSERT INTO signals_log (signal_name, value, source, timestamp, protocol) VALUES ('led', '${state}', 'ROBOT', CURRENT_TIMESTAMP, 'CAN')</arg>
+<doc>Executes the ``sql_string`` as a single SQL command.</doc>
+<status status="PASS" start="2025-07-21T12:15:49.059695" elapsed="0.013011"/>
+</kw>
+<arg>off</arg>
+<status status="PASS" start="2025-07-21T12:15:49.059533" elapsed="0.013261"/>
+</kw>
+<kw name="Log" owner="BuiltIn">
+<msg time="2025-07-21T12:15:49.073020" level="INFO">Light test initialized with lights off</msg>
+<arg>Light test initialized with lights off</arg>
+<doc>Logs the given message with the given level.</doc>
+<status status="PASS" start="2025-07-21T12:15:49.072912" elapsed="0.000147"/>
+</kw>
+<status status="PASS" start="2025-07-21T12:15:49.059350" elapsed="0.013751"/>
+</kw>
+<status status="PASS" start="2025-07-21T12:15:49.028634" elapsed="0.044498"/>
+</kw>
+<test id="s1-t1" name="Test Light Functionality In Different Modes" line="14">
+<kw name="Test Light In Mode" owner="LightFunctionalityKeywords">
+<kw name="Change PWF State" owner="CommonKeywords">
+<kw name="Execute Sql String" owner="DatabaseLibrary">
+<msg time="2025-07-21T12:15:49.074660" level="INFO" html="true">Executing sql:&lt;br&gt;&lt;code style="font-weight: bold;"&gt;UPDATE pwf_state SET is_active = 0&lt;/code&gt;</msg>
+<msg time="2025-07-21T12:15:49.080065" level="INFO">Commit the transaction</msg>
+<arg>UPDATE pwf_state SET is_active = 0</arg>
+<doc>Executes the ``sql_string`` as a single SQL command.</doc>
+<status status="PASS" start="2025-07-21T12:15:49.074521" elapsed="0.012716"/>
+</kw>
+<kw name="Execute Sql String" owner="DatabaseLibrary">
+<msg time="2025-07-21T12:15:49.087729" level="INFO" html="true">Executing sql:&lt;br&gt;&lt;code style="font-weight: bold;"&gt;UPDATE pwf_state SET is_active = 1, timestamp = CURRENT_TIMESTAMP WHERE state = 'P'&lt;/code&gt;</msg>
+<msg time="2025-07-21T12:15:49.093068" level="INFO">Commit the transaction</msg>
+<arg>UPDATE pwf_state SET is_active = 1, timestamp = CURRENT_TIMESTAMP WHERE state = '${new_state}'</arg>
+<doc>Executes the ``sql_string`` as a single SQL command.</doc>
+<status status="PASS" start="2025-07-21T12:15:49.087443" elapsed="0.013028"/>
+</kw>
+<kw name="Execute Sql String" owner="DatabaseLibrary">
+<msg time="2025-07-21T12:15:49.100839" level="INFO" html="true">Executing sql:&lt;br&gt;&lt;code style="font-weight: bold;"&gt;INSERT INTO signals_log (signal_name, value, source, timestamp, protocol) VALUES ('pwf_state_change', 'P', 'ROBOT', CURRENT_TIMESTAMP, 'CAN')&lt;/code&gt;</msg>
+<msg time="2025-07-21T12:15:49.105701" level="INFO">Commit the transaction</msg>
+<arg>INSERT INTO signals_log (signal_name, value, source, timestamp, protocol) VALUES ('pwf_state_change', '${new_state}', 'ROBOT', CURRENT_TIMESTAMP, 'CAN')</arg>
+<doc>Executes the ``sql_string`` as a single SQL command.</doc>
+<status status="PASS" start="2025-07-21T12:15:49.100654" elapsed="0.012234"/>
+</kw>
+<arg>${mode}</arg>
+<status status="PASS" start="2025-07-21T12:15:49.074257" elapsed="0.038800"/>
+</kw>
+<kw name="Get Current PWF State" owner="CommonKeywords">
+<kw name="Query" owner="DatabaseLibrary">
+<msg time="2025-07-21T12:15:49.113676" level="INFO" html="true">Executing sql:&lt;br&gt;&lt;code style="font-weight: bold;"&gt;SELECT state FROM pwf_state WHERE is_active = 1 LIMIT 1&lt;/code&gt;</msg>
+<msg time="2025-07-21T12:15:49.118991" level="INFO">Commit the transaction</msg>
+<msg time="2025-07-21T12:15:49.122883" level="INFO" html="true">&lt;div style="max-width: 100%; overflow-x: auto;"&gt;&lt;table style="width: auto; border-collapse: collapse; border: 2px solid rgb(140 140 140)"&gt;&lt;caption style="text-align: left; font-weight: bold; padding: 5px;"&gt;Query returned 1 rows&lt;/caption&gt;&lt;tr&gt;&lt;th scope="col" style="color:black; background-color: #d6ecd4; border: 1px solid rgb(160 160 160);padding: 8px 10px;text-align: center;"&gt;Row&lt;/th&gt;&lt;th scope="col" style="background-color: #505050; color: #fff;border: 1px solid rgb(160 160 160);padding: 8px 10px;text-align: center;"&gt;state&lt;/th&gt;&lt;/tr&gt;&lt;tr style="background-color: var(--secondary-color, #eee)"&gt;&lt;th scope="row" style="color:black; background-color: #d6ecd4;border: 1px solid rgb(160 160 160);padding: 8px 10px;text-align: center;"&gt;0&lt;/th&gt;&lt;td style="border: 1px solid rgb(160 160 160);padding: 8px 10px;text-align: center;"&gt;P&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/div&gt;</msg>
+<msg time="2025-07-21T12:15:49.123074" level="INFO">${result} = (('P',),)</msg>
+<var>${result}</var>
+<arg>SELECT state FROM pwf_state WHERE is_active = 1 LIMIT 1</arg>
+<doc>Runs a query with the ``select_statement`` and returns the result as list of rows.
+The type of row values depends on the database module -
+usually they are tuples or tuple-like objects.</doc>
+<status status="PASS" start="2025-07-21T12:15:49.113542" elapsed="0.009563"/>
+</kw>
+<return>
+<value>${result[0][0]}</value>
+<status status="PASS" start="2025-07-21T12:15:49.123185" elapsed="0.000079"/>
+</return>
+<msg time="2025-07-21T12:15:49.123856" level="INFO">${current_mode} = P</msg>
+<var>${current_mode}</var>
+<status status="PASS" start="2025-07-21T12:15:49.113287" elapsed="0.010607"/>
+</kw>
+<kw name="Should Be Equal" owner="BuiltIn">
+<arg>${current_mode}</arg>
+<arg>${mode}</arg>
+<arg>Failed to set mode to ${mode}</arg>
+<doc>Fails if the given objects are unequal.</doc>
+<status status="PASS" start="2025-07-21T12:15:49.124035" elapsed="0.000362"/>
+</kw>
+<kw name="Set LED State" owner="CommonKeywords">
+<kw name="Execute Sql String" owner="DatabaseLibrary">
+<msg time="2025-07-21T12:15:49.124984" level="INFO" html="true">Executing sql:&lt;br&gt;&lt;code style="font-weight: bold;"&gt;INSERT INTO signals_log (signal_name, value, source, timestamp, protocol) VALUES ('led', 'on', 'ROBOT', CURRENT_TIMESTAMP, 'CAN')&lt;/code&gt;</msg>
+<msg time="2025-07-21T12:15:49.129336" level="INFO">Commit the transaction</msg>
+<arg>INSERT INTO signals_log (signal_name, value, source, timestamp, protocol) VALUES ('led', '${state}', 'ROBOT', CURRENT_TIMESTAMP, 'CAN')</arg>
+<doc>Executes the ``sql_string`` as a single SQL command.</doc>
+<status status="PASS" start="2025-07-21T12:15:49.124836" elapsed="0.011122"/>
+</kw>
+<arg>on</arg>
+<status status="PASS" start="2025-07-21T12:15:49.124574" elapsed="0.011644"/>
+</kw>
+<kw name="Get Current LED State" owner="CommonKeywords">
+<kw name="Query" owner="DatabaseLibrary">
+<msg time="2025-07-21T12:15:49.136795" level="INFO" html="true">Executing sql:&lt;br&gt;&lt;code style="font-weight: bold;"&gt;SELECT value FROM signals_log WHERE signal_name = 'led' ORDER BY timestamp DESC LIMIT 1&lt;/code&gt;</msg>
+<msg time="2025-07-21T12:15:49.144060" level="INFO">Commit the transaction</msg>
+<msg time="2025-07-21T12:15:49.147328" level="INFO" html="true">&lt;div style="max-width: 100%; overflow-x: auto;"&gt;&lt;table style="width: auto; border-collapse: collapse; border: 2px solid rgb(140 140 140)"&gt;&lt;caption style="text-align: left; font-weight: bold; padding: 5px;"&gt;Query returned 1 rows&lt;/caption&gt;&lt;tr&gt;&lt;th scope="col" style="color:black; background-color: #d6ecd4; border: 1px solid rgb(160 160 160);padding: 8px 10px;text-align: center;"&gt;Row&lt;/th&gt;&lt;th scope="col" style="background-color: #505050; color: #fff;border: 1px solid rgb(160 160 160);padding: 8px 10px;text-align: center;"&gt;value&lt;/th&gt;&lt;/tr&gt;&lt;tr style="background-color: var(--secondary-color, #eee)"&gt;&lt;th scope="row" style="color:black; background-color: #d6ecd4;border: 1px solid rgb(160 160 160);padding: 8px 10px;text-align: center;"&gt;0&lt;/th&gt;&lt;td style="border: 1px solid rgb(160 160 160);padding: 8px 10px;text-align: center;"&gt;off&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/div&gt;</msg>
+<msg time="2025-07-21T12:15:49.147491" level="INFO">${result} = (('off',),)</msg>
+<var>${result}</var>
+<arg>SELECT value FROM signals_log WHERE signal_name = 'led' ORDER BY timestamp DESC LIMIT 1</arg>
+<doc>Runs a query with the ``select_statement`` and returns the result as list of rows.
+The type of row values depends on the database module -
+usually they are tuples or tuple-like objects.</doc>
+<status status="PASS" start="2025-07-21T12:15:49.136670" elapsed="0.010847"/>
+</kw>
+<return>
+<value>${result[0][0]}</value>
+<status status="PASS" start="2025-07-21T12:15:49.147584" elapsed="0.000047"/>
+</return>
+<msg time="2025-07-21T12:15:49.148085" level="INFO">${led_state} = off</msg>
+<var>${led_state}</var>
+<status status="PASS" start="2025-07-21T12:15:49.136414" elapsed="0.011697"/>
+</kw>
+<kw name="Run Keyword If" owner="BuiltIn">
+<kw name="Should Be Equal" owner="BuiltIn">
+<arg>${led_state}</arg>
+<arg>off</arg>
+<arg>Light should be off in ${mode} mode but is on</arg>
+<doc>Fails if the given objects are unequal.</doc>
+<status status="PASS" start="2025-07-21T12:15:49.148455" elapsed="0.000251"/>
+</kw>
+<arg>${should_work}</arg>
+<arg>Should Be Equal</arg>
+<arg>${led_state}</arg>
+<arg>on</arg>
+<arg>Light should be on in ${mode} mode but is off</arg>
+<arg>ELSE</arg>
+<arg>Should Be Equal</arg>
+<arg>${led_state}</arg>
+<arg>off</arg>
+<arg>Light should be off in ${mode} mode but is on</arg>
+<doc>Runs the given keyword with the given arguments, if ``condition`` is true.</doc>
+<status status="PASS" start="2025-07-21T12:15:49.148237" elapsed="0.000532"/>
+</kw>
+<kw name="Set Variable If" owner="BuiltIn">
+<msg time="2025-07-21T12:15:49.149112" level="INFO">${message} = Light correctly doesn't work in P mode</msg>
+<var>${message}</var>
+<arg>${should_work}</arg>
+<arg>Light correctly works in ${mode} mode</arg>
+<arg>Light correctly doesn't work in ${mode} mode</arg>
+<doc>Sets variable based on the given condition.</doc>
+<status status="PASS" start="2025-07-21T12:15:49.148904" elapsed="0.000236"/>
+</kw>
+<kw name="Log" owner="BuiltIn">
+<msg time="2025-07-21T12:15:49.149385" level="INFO">Light correctly doesn't work in P mode</msg>
+<arg>${message}</arg>
+<doc>Logs the given message with the given level.</doc>
+<status status="PASS" start="2025-07-21T12:15:49.149261" elapsed="0.000168"/>
+</kw>
+<arg>P</arg>
+<arg>${FALSE}</arg>
+<status status="PASS" start="2025-07-21T12:15:49.073873" elapsed="0.075615"/>
+</kw>
+<kw name="Test Light In Mode" owner="LightFunctionalityKeywords">
+<kw name="Change PWF State" owner="CommonKeywords">
+<kw name="Execute Sql String" owner="DatabaseLibrary">
+<msg time="2025-07-21T12:15:49.150938" level="INFO" html="true">Executing sql:&lt;br&gt;&lt;code style="font-weight: bold;"&gt;UPDATE pwf_state SET is_active = 0&lt;/code&gt;</msg>
+<msg time="2025-07-21T12:15:49.154936" level="INFO">Commit the transaction</msg>
+<arg>UPDATE pwf_state SET is_active = 0</arg>
+<doc>Executes the ``sql_string`` as a single SQL command.</doc>
+<status status="PASS" start="2025-07-21T12:15:49.150810" elapsed="0.010713"/>
+</kw>
+<kw name="Execute Sql String" owner="DatabaseLibrary">
+<msg time="2025-07-21T12:15:49.161903" level="INFO" html="true">Executing sql:&lt;br&gt;&lt;code style="font-weight: bold;"&gt;UPDATE pwf_state SET is_active = 1, timestamp = CURRENT_TIMESTAMP WHERE state = 'S'&lt;/code&gt;</msg>
+<msg time="2025-07-21T12:15:49.166889" level="INFO">Commit the transaction</msg>
+<arg>UPDATE pwf_state SET is_active = 1, timestamp = CURRENT_TIMESTAMP WHERE state = '${new_state}'</arg>
+<doc>Executes the ``sql_string`` as a single SQL command.</doc>
+<status status="PASS" start="2025-07-21T12:15:49.161691" elapsed="0.013261"/>
+</kw>
+<kw name="Execute Sql String" owner="DatabaseLibrary">
+<msg time="2025-07-21T12:15:49.175389" level="INFO" html="true">Executing sql:&lt;br&gt;&lt;code style="font-weight: bold;"&gt;INSERT INTO signals_log (signal_name, value, source, timestamp, protocol) VALUES ('pwf_state_change', 'S', 'ROBOT', CURRENT_TIMESTAMP, 'CAN')&lt;/code&gt;</msg>
+<msg time="2025-07-21T12:15:49.179533" level="INFO">Commit the transaction</msg>
+<arg>INSERT INTO signals_log (signal_name, value, source, timestamp, protocol) VALUES ('pwf_state_change', '${new_state}', 'ROBOT', CURRENT_TIMESTAMP, 'CAN')</arg>
+<doc>Executes the ``sql_string`` as a single SQL command.</doc>
+<status status="PASS" start="2025-07-21T12:15:49.175167" elapsed="0.010931"/>
+</kw>
+<arg>${mode}</arg>
+<status status="PASS" start="2025-07-21T12:15:49.150516" elapsed="0.035697"/>
+</kw>
+<kw name="Get Current PWF State" owner="CommonKeywords">
+<kw name="Query" owner="DatabaseLibrary">
+<msg time="2025-07-21T12:15:49.186837" level="INFO" html="true">Executing sql:&lt;br&gt;&lt;code style="font-weight: bold;"&gt;SELECT state FROM pwf_state WHERE is_active = 1 LIMIT 1&lt;/code&gt;</msg>
+<msg time="2025-07-21T12:15:49.191000" level="INFO">Commit the transaction</msg>
+<msg time="2025-07-21T12:15:49.194941" level="INFO" html="true">&lt;div style="max-width: 100%; overflow-x: auto;"&gt;&lt;table style="width: auto; border-collapse: collapse; border: 2px solid rgb(140 140 140)"&gt;&lt;caption style="text-align: left; font-weight: bold; padding: 5px;"&gt;Query returned 1 rows&lt;/caption&gt;&lt;tr&gt;&lt;th scope="col" style="color:black; background-color: #d6ecd4; border: 1px solid rgb(160 160 160);padding: 8px 10px;text-align: center;"&gt;Row&lt;/th&gt;&lt;th scope="col" style="background-color: #505050; color: #fff;border: 1px solid rgb(160 160 160);padding: 8px 10px;text-align: center;"&gt;state&lt;/th&gt;&lt;/tr&gt;&lt;tr style="background-color: var(--secondary-color, #eee)"&gt;&lt;th scope="row" style="color:black; background-color: #d6ecd4;border: 1px solid rgb(160 160 160);padding: 8px 10px;text-align: center;"&gt;0&lt;/th&gt;&lt;td style="border: 1px solid rgb(160 160 160);padding: 8px 10px;text-align: center;"&gt;S&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/div&gt;</msg>
+<msg time="2025-07-21T12:15:49.195128" level="INFO">${result} = (('S',),)</msg>
+<var>${result}</var>
+<arg>SELECT state FROM pwf_state WHERE is_active = 1 LIMIT 1</arg>
+<doc>Runs a query with the ``select_statement`` and returns the result as list of rows.
+The type of row values depends on the database module -
+usually they are tuples or tuple-like objects.</doc>
+<status status="PASS" start="2025-07-21T12:15:49.186702" elapsed="0.008458"/>
+</kw>
+<return>
+<value>${result[0][0]}</value>
+<status status="PASS" start="2025-07-21T12:15:49.195242" elapsed="0.000047"/>
+</return>
+<msg time="2025-07-21T12:15:49.196066" level="INFO">${current_mode} = S</msg>
+<var>${current_mode}</var>
+<status status="PASS" start="2025-07-21T12:15:49.186412" elapsed="0.009732"/>
+</kw>
+<kw name="Should Be Equal" owner="BuiltIn">
+<arg>${current_mode}</arg>
+<arg>${mode}</arg>
+<arg>Failed to set mode to ${mode}</arg>
+<doc>Fails if the given objects are unequal.</doc>
+<status status="PASS" start="2025-07-21T12:15:49.196310" elapsed="0.000226"/>
+</kw>
+<kw name="Set LED State" owner="CommonKeywords">
+<kw name="Execute Sql String" owner="DatabaseLibrary">
+<msg time="2025-07-21T12:15:49.196839" level="INFO" html="true">Executing sql:&lt;br&gt;&lt;code style="font-weight: bold;"&gt;INSERT INTO signals_log (signal_name, value, source, timestamp, protocol) VALUES ('led', 'on', 'ROBOT', CURRENT_TIMESTAMP, 'CAN')&lt;/code&gt;</msg>
+<msg time="2025-07-21T12:15:49.201596" level="INFO">Commit the transaction</msg>
+<arg>INSERT INTO signals_log (signal_name, value, source, timestamp, protocol) VALUES ('led', '${state}', 'ROBOT', CURRENT_TIMESTAMP, 'CAN')</arg>
+<doc>Executes the ``sql_string`` as a single SQL command.</doc>
+<status status="PASS" start="2025-07-21T12:15:49.196766" elapsed="0.012320"/>
+</kw>
+<arg>on</arg>
+<status status="PASS" start="2025-07-21T12:15:49.196630" elapsed="0.012563"/>
+</kw>
+<kw name="Get Current LED State" owner="CommonKeywords">
+<kw name="Query" owner="DatabaseLibrary">
+<msg time="2025-07-21T12:15:49.209824" level="INFO" html="true">Executing sql:&lt;br&gt;&lt;code style="font-weight: bold;"&gt;SELECT value FROM signals_log WHERE signal_name = 'led' ORDER BY timestamp DESC LIMIT 1&lt;/code&gt;</msg>
+<msg time="2025-07-21T12:15:49.216358" level="INFO">Commit the transaction</msg>
+<msg time="2025-07-21T12:15:49.220223" level="INFO" html="true">&lt;div style="max-width: 100%; overflow-x: auto;"&gt;&lt;table style="width: auto; border-collapse: collapse; border: 2px solid rgb(140 140 140)"&gt;&lt;caption style="text-align: left; font-weight: bold; padding: 5px;"&gt;Query returned 1 rows&lt;/caption&gt;&lt;tr&gt;&lt;th scope="col" style="color:black; background-color: #d6ecd4; border: 1px solid rgb(160 160 160);padding: 8px 10px;text-align: center;"&gt;Row&lt;/th&gt;&lt;th scope="col" style="background-color: #505050; color: #fff;border: 1px solid rgb(160 160 160);padding: 8px 10px;text-align: center;"&gt;value&lt;/th&gt;&lt;/tr&gt;&lt;tr style="background-color: var(--secondary-color, #eee)"&gt;&lt;th scope="row" style="color:black; background-color: #d6ecd4;border: 1px solid rgb(160 160 160);padding: 8px 10px;text-align: center;"&gt;0&lt;/th&gt;&lt;td style="border: 1px solid rgb(160 160 160);padding: 8px 10px;text-align: center;"&gt;off&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/div&gt;</msg>
+<msg time="2025-07-21T12:15:49.220349" level="INFO">${result} = (('off',),)</msg>
+<var>${result}</var>
+<arg>SELECT value FROM signals_log WHERE signal_name = 'led' ORDER BY timestamp DESC LIMIT 1</arg>
+<doc>Runs a query with the ``select_statement`` and returns the result as list of rows.
+The type of row values depends on the database module -
+usually they are tuples or tuple-like objects.</doc>
+<status status="PASS" start="2025-07-21T12:15:49.209686" elapsed="0.010689"/>
+</kw>
+<return>
+<value>${result[0][0]}</value>
+<status status="PASS" start="2025-07-21T12:15:49.220441" elapsed="0.000043"/>
+</return>
+<msg time="2025-07-21T12:15:49.220978" level="INFO">${led_state} = off</msg>
+<var>${led_state}</var>
+<status status="PASS" start="2025-07-21T12:15:49.209397" elapsed="0.011613"/>
+</kw>
+<kw name="Run Keyword If" owner="BuiltIn">
+<kw name="Should Be Equal" owner="BuiltIn">
+<arg>${led_state}</arg>
+<arg>off</arg>
+<arg>Light should be off in ${mode} mode but is on</arg>
+<doc>Fails if the given objects are unequal.</doc>
+<status status="PASS" start="2025-07-21T12:15:49.221380" elapsed="0.000725"/>
+</kw>
+<arg>${should_work}</arg>
+<arg>Should Be Equal</arg>
+<arg>${led_state}</arg>
+<arg>on</arg>
+<arg>Light should be on in ${mode} mode but is off</arg>
+<arg>ELSE</arg>
+<arg>Should Be Equal</arg>
+<arg>${led_state}</arg>
+<arg>off</arg>
+<arg>Light should be off in ${mode} mode but is on</arg>
+<doc>Runs the given keyword with the given arguments, if ``condition`` is true.</doc>
+<status status="PASS" start="2025-07-21T12:15:49.221154" elapsed="0.001029"/>
+</kw>
+<kw name="Set Variable If" owner="BuiltIn">
+<msg time="2025-07-21T12:15:49.222537" level="INFO">${message} = Light correctly doesn't work in S mode</msg>
+<var>${message}</var>
+<arg>${should_work}</arg>
+<arg>Light correctly works in ${mode} mode</arg>
+<arg>Light correctly doesn't work in ${mode} mode</arg>
+<doc>Sets variable based on the given condition.</doc>
+<status status="PASS" start="2025-07-21T12:15:49.222347" elapsed="0.000218"/>
+</kw>
+<kw name="Log" owner="BuiltIn">
+<msg time="2025-07-21T12:15:49.222792" level="INFO">Light correctly doesn't work in S mode</msg>
+<arg>${message}</arg>
+<doc>Logs the given message with the given level.</doc>
+<status status="PASS" start="2025-07-21T12:15:49.222677" elapsed="0.000156"/>
+</kw>
+<arg>S</arg>
+<arg>${FALSE}</arg>
+<status status="PASS" start="2025-07-21T12:15:49.150129" elapsed="0.072760"/>
+</kw>
+<kw name="Test Light In Mode" owner="LightFunctionalityKeywords">
+<kw name="Change PWF State" owner="CommonKeywords">
+<kw name="Execute Sql String" owner="DatabaseLibrary">
+<msg time="2025-07-21T12:15:49.225104" level="INFO" html="true">Executing sql:&lt;br&gt;&lt;code style="font-weight: bold;"&gt;UPDATE pwf_state SET is_active = 0&lt;/code&gt;</msg>
+<msg time="2025-07-21T12:15:49.230069" level="INFO">Commit the transaction</msg>
+<arg>UPDATE pwf_state SET is_active = 0</arg>
+<doc>Executes the ``sql_string`` as a single SQL command.</doc>
+<status status="PASS" start="2025-07-21T12:15:49.224984" elapsed="0.012735"/>
+</kw>
+<kw name="Execute Sql String" owner="DatabaseLibrary">
+<msg time="2025-07-21T12:15:49.238175" level="INFO" html="true">Executing sql:&lt;br&gt;&lt;code style="font-weight: bold;"&gt;UPDATE pwf_state SET is_active = 1, timestamp = CURRENT_TIMESTAMP WHERE state = 'W'&lt;/code&gt;</msg>
+<msg time="2025-07-21T12:15:49.241945" level="INFO">Commit the transaction</msg>
+<arg>UPDATE pwf_state SET is_active = 1, timestamp = CURRENT_TIMESTAMP WHERE state = '${new_state}'</arg>
+<doc>Executes the ``sql_string`` as a single SQL command.</doc>
+<status status="PASS" start="2025-07-21T12:15:49.237907" elapsed="0.010982"/>
+</kw>
+<kw name="Execute Sql String" owner="DatabaseLibrary">
+<msg time="2025-07-21T12:15:49.249357" level="INFO" html="true">Executing sql:&lt;br&gt;&lt;code style="font-weight: bold;"&gt;INSERT INTO signals_log (signal_name, value, source, timestamp, protocol) VALUES ('pwf_state_change', 'W', 'ROBOT', CURRENT_TIMESTAMP, 'CAN')&lt;/code&gt;</msg>
+<msg time="2025-07-21T12:15:49.254381" level="INFO">Commit the transaction</msg>
+<arg>INSERT INTO signals_log (signal_name, value, source, timestamp, protocol) VALUES ('pwf_state_change', '${new_state}', 'ROBOT', CURRENT_TIMESTAMP, 'CAN')</arg>
+<doc>Executes the ``sql_string`` as a single SQL command.</doc>
+<status status="PASS" start="2025-07-21T12:15:49.249116" elapsed="0.013301"/>
+</kw>
+<arg>${mode}</arg>
+<status status="PASS" start="2025-07-21T12:15:49.224712" elapsed="0.037855"/>
+</kw>
+<kw name="Get Current PWF State" owner="CommonKeywords">
+<kw name="Query" owner="DatabaseLibrary">
+<msg time="2025-07-21T12:15:49.262991" level="INFO" html="true">Executing sql:&lt;br&gt;&lt;code style="font-weight: bold;"&gt;SELECT state FROM pwf_state WHERE is_active = 1 LIMIT 1&lt;/code&gt;</msg>
+<msg time="2025-07-21T12:15:49.268028" level="INFO">Commit the transaction</msg>
+<msg time="2025-07-21T12:15:49.270638" level="INFO" html="true">&lt;div style="max-width: 100%; overflow-x: auto;"&gt;&lt;table style="width: auto; border-collapse: collapse; border: 2px solid rgb(140 140 140)"&gt;&lt;caption style="text-align: left; font-weight: bold; padding: 5px;"&gt;Query returned 1 rows&lt;/caption&gt;&lt;tr&gt;&lt;th scope="col" style="color:black; background-color: #d6ecd4; border: 1px solid rgb(160 160 160);padding: 8px 10px;text-align: center;"&gt;Row&lt;/th&gt;&lt;th scope="col" style="background-color: #505050; color: #fff;border: 1px solid rgb(160 160 160);padding: 8px 10px;text-align: center;"&gt;state&lt;/th&gt;&lt;/tr&gt;&lt;tr style="background-color: var(--secondary-color, #eee)"&gt;&lt;th scope="row" style="color:black; background-color: #d6ecd4;border: 1px solid rgb(160 160 160);padding: 8px 10px;text-align: center;"&gt;0&lt;/th&gt;&lt;td style="border: 1px solid rgb(160 160 160);padding: 8px 10px;text-align: center;"&gt;W&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/div&gt;</msg>
+<msg time="2025-07-21T12:15:49.270853" level="INFO">${result} = (('W',),)</msg>
+<var>${result}</var>
+<arg>SELECT state FROM pwf_state WHERE is_active = 1 LIMIT 1</arg>
+<doc>Runs a query with the ``select_statement`` and returns the result as list of rows.
+The type of row values depends on the database module -
+usually they are tuples or tuple-like objects.</doc>
+<status status="PASS" start="2025-07-21T12:15:49.262913" elapsed="0.007965"/>
+</kw>
+<return>
+<value>${result[0][0]}</value>
+<status status="PASS" start="2025-07-21T12:15:49.270943" elapsed="0.000043"/>
+</return>
+<msg time="2025-07-21T12:15:49.271529" level="INFO">${current_mode} = W</msg>
+<var>${current_mode}</var>
+<status status="PASS" start="2025-07-21T12:15:49.262751" elapsed="0.008812"/>
+</kw>
+<kw name="Should Be Equal" owner="BuiltIn">
+<arg>${current_mode}</arg>
+<arg>${mode}</arg>
+<arg>Failed to set mode to ${mode}</arg>
+<doc>Fails if the given objects are unequal.</doc>
+<status status="PASS" start="2025-07-21T12:15:49.271723" elapsed="0.000245"/>
+</kw>
+<kw name="Set LED State" owner="CommonKeywords">
+<kw name="Execute Sql String" owner="DatabaseLibrary">
+<msg time="2025-07-21T12:15:49.272249" level="INFO" html="true">Executing sql:&lt;br&gt;&lt;code style="font-weight: bold;"&gt;INSERT INTO signals_log (signal_name, value, source, timestamp, protocol) VALUES ('led', 'on', 'ROBOT', CURRENT_TIMESTAMP, 'CAN')&lt;/code&gt;</msg>
+<msg time="2025-07-21T12:15:49.277026" level="INFO">Commit the transaction</msg>
+<arg>INSERT INTO signals_log (signal_name, value, source, timestamp, protocol) VALUES ('led', '${state}', 'ROBOT', CURRENT_TIMESTAMP, 'CAN')</arg>
+<doc>Executes the ``sql_string`` as a single SQL command.</doc>
+<status status="PASS" start="2025-07-21T12:15:49.272185" elapsed="0.014116"/>
+</kw>
+<arg>on</arg>
+<status status="PASS" start="2025-07-21T12:15:49.272059" elapsed="0.014343"/>
+</kw>
+<kw name="Get Current LED State" owner="CommonKeywords">
+<kw name="Query" owner="DatabaseLibrary">
+<msg time="2025-07-21T12:15:49.286989" level="INFO" html="true">Executing sql:&lt;br&gt;&lt;code style="font-weight: bold;"&gt;SELECT value FROM signals_log WHERE signal_name = 'led' ORDER BY timestamp DESC LIMIT 1&lt;/code&gt;</msg>
+<msg time="2025-07-21T12:15:49.293649" level="INFO">Commit the transaction</msg>
+<msg time="2025-07-21T12:15:49.297422" level="INFO" html="true">&lt;div style="max-width: 100%; overflow-x: auto;"&gt;&lt;table style="width: auto; border-collapse: collapse; border: 2px solid rgb(140 140 140)"&gt;&lt;caption style="text-align: left; font-weight: bold; padding: 5px;"&gt;Query returned 1 rows&lt;/caption&gt;&lt;tr&gt;&lt;th scope="col" style="color:black; background-color: #d6ecd4; border: 1px solid rgb(160 160 160);padding: 8px 10px;text-align: center;"&gt;Row&lt;/th&gt;&lt;th scope="col" style="background-color: #505050; color: #fff;border: 1px solid rgb(160 160 160);padding: 8px 10px;text-align: center;"&gt;value&lt;/th&gt;&lt;/tr&gt;&lt;tr style="background-color: var(--secondary-color, #eee)"&gt;&lt;th scope="row" style="color:black; background-color: #d6ecd4;border: 1px solid rgb(160 160 160);padding: 8px 10px;text-align: center;"&gt;0&lt;/th&gt;&lt;td style="border: 1px solid rgb(160 160 160);padding: 8px 10px;text-align: center;"&gt;off&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/div&gt;</msg>
+<msg time="2025-07-21T12:15:49.297517" level="INFO">${result} = (('off',),)</msg>
+<var>${result}</var>
+<arg>SELECT value FROM signals_log WHERE signal_name = 'led' ORDER BY timestamp DESC LIMIT 1</arg>
+<doc>Runs a query with the ``select_statement`` and returns the result as list of rows.
+The type of row values depends on the database module -
+usually they are tuples or tuple-like objects.</doc>
+<status status="PASS" start="2025-07-21T12:15:49.286858" elapsed="0.010672"/>
+</kw>
+<return>
+<value>${result[0][0]}</value>
+<status status="PASS" start="2025-07-21T12:15:49.297606" elapsed="0.000044"/>
+</return>
+<msg time="2025-07-21T12:15:49.298091" level="INFO">${led_state} = off</msg>
+<var>${led_state}</var>
+<status status="PASS" start="2025-07-21T12:15:49.286592" elapsed="0.011523"/>
+</kw>
+<kw name="Run Keyword If" owner="BuiltIn">
+<kw name="Should Be Equal" owner="BuiltIn">
+<msg time="2025-07-21T12:15:49.298758" level="FAIL">Light should be on in W mode but is off: off != on</msg>
+<arg>${led_state}</arg>
+<arg>on</arg>
+<arg>Light should be on in ${mode} mode but is off</arg>
+<doc>Fails if the given objects are unequal.</doc>
+<status status="FAIL" start="2025-07-21T12:15:49.298460" elapsed="0.000480">Light should be on in W mode but is off: off != on</status>
+</kw>
+<arg>${should_work}</arg>
+<arg>Should Be Equal</arg>
+<arg>${led_state}</arg>
+<arg>on</arg>
+<arg>Light should be on in ${mode} mode but is off</arg>
+<arg>ELSE</arg>
+<arg>Should Be Equal</arg>
+<arg>${led_state}</arg>
+<arg>off</arg>
+<arg>Light should be off in ${mode} mode but is on</arg>
+<doc>Runs the given keyword with the given arguments, if ``condition`` is true.</doc>
+<status status="FAIL" start="2025-07-21T12:15:49.298243" elapsed="0.000772">Light should be on in W mode but is off: off != on</status>
+</kw>
+<kw name="Set Variable If" owner="BuiltIn">
+<var>${message}</var>
+<arg>${should_work}</arg>
+<arg>Light correctly works in ${mode} mode</arg>
+<arg>Light correctly doesn't work in ${mode} mode</arg>
+<doc>Sets variable based on the given condition.</doc>
+<status status="NOT RUN" start="2025-07-21T12:15:49.299205" elapsed="0.000027"/>
+</kw>
+<kw name="Log" owner="BuiltIn">
+<arg>${message}</arg>
+<doc>Logs the given message with the given level.</doc>
+<status status="NOT RUN" start="2025-07-21T12:15:49.299344" elapsed="0.000021"/>
+</kw>
+<arg>W</arg>
+<arg>${TRUE}</arg>
+<status status="FAIL" start="2025-07-21T12:15:49.224362" elapsed="0.075133">Light should be on in W mode but is off: off != on</status>
+</kw>
+<kw name="Test Light In Mode" owner="LightFunctionalityKeywords">
+<arg>F</arg>
+<arg>${TRUE}</arg>
+<status status="NOT RUN" start="2025-07-21T12:15:49.301950" elapsed="0.000043"/>
+</kw>
+<doc>Test that light only works in W and F modes</doc>
+<status status="FAIL" start="2025-07-21T12:15:49.073183" elapsed="0.230722">Light should be on in W mode but is off: off != on</status>
+</test>
+<kw name="Disconnect From Database" owner="CommonKeywords" type="TEARDOWN">
+<kw name="Disconnect From Database" owner="CommonKeywords">
+<kw name="Disconnect From Database" owner="CommonKeywords">
+<kw name="Disconnect From Database" owner="CommonKeywords">
+<kw name="Disconnect From Database" owner="CommonKeywords">
+<kw name="Disconnect From Database" owner="CommonKeywords">
+<kw name="Disconnect From Database" owner="CommonKeywords">
+<kw name="Disconnect From Database" owner="CommonKeywords">
+<kw name="Disconnect From Database" owner="CommonKeywords">
+<kw name="Disconnect From Database" owner="CommonKeywords">
+<kw name="Disconnect From Database" owner="CommonKeywords">
+<kw name="Disconnect From Database" owner="CommonKeywords">
+<kw name="Disconnect From Database" owner="CommonKeywords">
+<kw name="Disconnect From Database" owner="CommonKeywords">
+<kw name="Disconnect From Database" owner="CommonKeywords">
+<kw name="Disconnect From Database" owner="CommonKeywords">
+<kw name="Disconnect From Database" owner="CommonKeywords">
+<kw name="Disconnect From Database" owner="CommonKeywords">
+<kw name="Disconnect From Database" owner="CommonKeywords">
+<kw name="Disconnect From Database" owner="CommonKeywords">
+<kw name="Disconnect From Database" owner="CommonKeywords">
+<kw name="Disconnect From Database" owner="CommonKeywords">
+<kw name="Disconnect From Database" owner="CommonKeywords">
+<kw name="Disconnect From Database" owner="CommonKeywords">
+<kw name="Disconnect From Database" owner="CommonKeywords">
+<kw name="Disconnect From Database" owner="CommonKeywords">
+<kw name="Disconnect From Database" owner="CommonKeywords">
+<kw name="Disconnect From Database" owner="CommonKeywords">
+<kw name="Disconnect From Database" owner="CommonKeywords">
+<kw name="Disconnect From Database" owner="CommonKeywords">
+<kw name="Disconnect From Database" owner="CommonKeywords">
+<kw name="Disconnect From Database" owner="CommonKeywords">
+<kw name="Disconnect From Database" owner="CommonKeywords">
+<kw name="Disconnect From Database" owner="CommonKeywords">
+<kw name="Disconnect From Database" owner="CommonKeywords">
+<kw name="Disconnect From Database" owner="CommonKeywords">
+<kw name="Disconnect From Database" owner="CommonKeywords">
+<kw name="Disconnect From Database" owner="CommonKeywords">
+<kw name="Disconnect From Database" owner="CommonKeywords">
+<kw name="Disconnect From Database" owner="CommonKeywords">
+<kw name="Disconnect From Database" owner="CommonKeywords">
+<kw name="Disconnect From Database" owner="CommonKeywords">
+<kw name="Disconnect From Database" owner="CommonKeywords">
+<kw name="Disconnect From Database" owner="CommonKeywords">
+<kw name="Disconnect From Database" owner="CommonKeywords">
+<kw name="Disconnect From Database" owner="CommonKeywords">
+<kw name="Disconnect From Database" owner="CommonKeywords">
+<kw name="Disconnect From Database" owner="CommonKeywords">
+<kw name="Disconnect From Database" owner="CommonKeywords">
+<kw name="Disconnect From Database" owner="CommonKeywords">
+<kw name="Disconnect From Database" owner="CommonKeywords">
+<kw name="Disconnect From Database" owner="CommonKeywords">
+<kw name="Disconnect From Database" owner="CommonKeywords">
+<kw name="Disconnect From Database" owner="CommonKeywords">
+<kw name="Disconnect From Database" owner="CommonKeywords">
+<kw name="Disconnect From Database" owner="CommonKeywords">
+<kw name="Disconnect From Database" owner="CommonKeywords">
+<kw name="Disconnect From Database" owner="CommonKeywords">
+<kw name="Disconnect From Database" owner="CommonKeywords">
+<kw name="Disconnect From Database" owner="CommonKeywords">
+<kw name="Disconnect From Database" owner="CommonKeywords">
+<kw name="Disconnect From Database" owner="CommonKeywords">
+<kw name="Disconnect From Database" owner="CommonKeywords">
+<kw name="Disconnect From Database" owner="CommonKeywords">
+<kw name="Disconnect From Database" owner="CommonKeywords">
+<kw name="Disconnect From Database" owner="CommonKeywords">
+<kw name="Disconnect From Database" owner="CommonKeywords">
+<kw name="Disconnect From Database" owner="CommonKeywords">
+<kw name="Disconnect From Database" owner="CommonKeywords">
+<kw name="Disconnect From Database" owner="CommonKeywords">
+<kw name="Disconnect From Database" owner="CommonKeywords">
+<kw name="Disconnect From Database" owner="CommonKeywords">
+<kw name="Disconnect From Database" owner="CommonKeywords">
+<kw name="Disconnect From Database" owner="CommonKeywords">
+<kw name="Disconnect From Database" owner="CommonKeywords">
+<kw name="Disconnect From Database" owner="CommonKeywords">
+<kw name="Disconnect From Database" owner="CommonKeywords">
+<kw name="Disconnect From Database" owner="CommonKeywords">
+<kw name="Disconnect From Database" owner="CommonKeywords">
+<kw name="Disconnect From Database" owner="CommonKeywords">
+<kw name="Disconnect From Database" owner="CommonKeywords">
+<kw name="Disconnect From Database" owner="CommonKeywords">
+<kw name="Disconnect From Database" owner="CommonKeywords">
+<kw name="Disconnect From Database" owner="CommonKeywords">
+<kw name="Disconnect From Database" owner="CommonKeywords">
+<kw name="Disconnect From Database" owner="CommonKeywords">
+<kw name="Disconnect From Database" owner="CommonKeywords">
+<kw name="Disconnect From Database" owner="CommonKeywords">
+<kw name="Disconnect From Database" owner="CommonKeywords">
+<kw name="Disconnect From Database" owner="CommonKeywords">
+<kw name="Disconnect From Database" owner="CommonKeywords">
+<kw name="Disconnect From Database" owner="CommonKeywords">
+<kw name="Disconnect From Database" owner="CommonKeywords">
+<kw name="Disconnect From Database" owner="CommonKeywords">
+<kw name="Disconnect From Database" owner="CommonKeywords">
+<kw name="Disconnect From Database" owner="CommonKeywords">
+<kw name="Disconnect From Database" owner="CommonKeywords">
+<kw name="Disconnect From Database" owner="CommonKeywords">
+<kw name="Disconnect From Database" owner="CommonKeywords">
+<kw name="Disconnect From Database" owner="CommonKeywords">
+<kw name="Disconnect From Database" owner="CommonKeywords">
+<kw name="Disconnect From Database" owner="CommonKeywords">
+<kw name="Disconnect From Database" owner="CommonKeywords">
+<kw name="Disconnect From Database" owner="CommonKeywords">
+<kw name="Disconnect From Database" owner="CommonKeywords">
+<kw name="Disconnect From Database" owner="CommonKeywords">
+<kw name="Disconnect From Database" owner="CommonKeywords">
+<kw name="Disconnect From Database" owner="CommonKeywords">
+<kw name="Disconnect From Database" owner="CommonKeywords">
+<kw name="Disconnect From Database" owner="CommonKeywords">
+<kw name="Disconnect From Database" owner="CommonKeywords">
+<kw name="Disconnect From Database" owner="CommonKeywords">
+<kw name="Disconnect From Database" owner="CommonKeywords">
+<kw name="Disconnect From Database" owner="CommonKeywords">
+<kw name="Disconnect From Database" owner="CommonKeywords">
+<kw name="Disconnect From Database" owner="CommonKeywords">
+<kw name="Disconnect From Database" owner="CommonKeywords">
+<kw name="Disconnect From Database" owner="CommonKeywords">
+<kw name="Disconnect From Database" owner="CommonKeywords">
+<kw name="Disconnect From Database" owner="CommonKeywords">
+<kw name="Disconnect From Database" owner="CommonKeywords">
+<kw name="Disconnect From Database" owner="CommonKeywords">
+<kw name="Disconnect From Database" owner="CommonKeywords">
+<kw name="Disconnect From Database" owner="CommonKeywords">
+<kw name="Disconnect From Database" owner="CommonKeywords">
+<kw name="Disconnect From Database" owner="CommonKeywords">
+<kw name="Disconnect From Database" owner="CommonKeywords">
+<kw name="Disconnect From Database" owner="CommonKeywords">
+<kw name="Disconnect From Database" owner="CommonKeywords">
+<kw name="Disconnect From Database" owner="CommonKeywords">
+<kw name="Disconnect From Database" owner="CommonKeywords">
+<kw name="Disconnect From Database" owner="CommonKeywords">
+<kw name="Disconnect From Database" owner="CommonKeywords">
+<kw name="Disconnect From Database" owner="CommonKeywords">
+<kw name="Disconnect From Database" owner="CommonKeywords">
+<kw name="Disconnect From Database" owner="CommonKeywords">
+<kw name="Disconnect From Database" owner="CommonKeywords">
+<kw name="Disconnect From Database" owner="CommonKeywords">
+<kw name="Disconnect From Database" owner="CommonKeywords">
+<kw name="Disconnect From Database" owner="CommonKeywords">
+<kw name="Disconnect From Database" owner="CommonKeywords">
+<kw name="Disconnect From Database" owner="CommonKeywords">
+<kw name="Disconnect From Database" owner="CommonKeywords">
+<kw name="Disconnect From Database" owner="CommonKeywords">
+<kw name="Disconnect From Database" owner="CommonKeywords">
+<kw name="Disconnect From Database" owner="CommonKeywords">
+<kw name="Disconnect From Database" owner="CommonKeywords">
+<kw name="Disconnect From Database" owner="CommonKeywords">
+<msg time="2025-07-21T12:15:49.341754" level="FAIL">Recursive execution stopped.</msg>
+<status status="FAIL" start="2025-07-21T12:15:49.341351" elapsed="0.000463">Recursive execution stopped.</status>
+</kw>
+<status status="FAIL" start="2025-07-21T12:15:49.341177" elapsed="0.001012">Recursive execution stopped.</status>
+</kw>
+<status status="FAIL" start="2025-07-21T12:15:49.341009" elapsed="0.001501">Recursive execution stopped.</status>
+</kw>
+<status status="FAIL" start="2025-07-21T12:15:49.340845" elapsed="0.001988">Recursive execution stopped.</status>
+</kw>
+<status status="FAIL" start="2025-07-21T12:15:49.340675" elapsed="0.002465">Recursive execution stopped.</status>
+</kw>
+<status status="FAIL" start="2025-07-21T12:15:49.340604" elapsed="0.002827">Recursive execution stopped.</status>
+</kw>
+<status status="FAIL" start="2025-07-21T12:15:49.340460" elapsed="0.005940">Recursive execution stopped.</status>
+</kw>
+<status status="FAIL" start="2025-07-21T12:15:49.340350" elapsed="0.006190">Recursive execution stopped.</status>
+</kw>
+<status status="FAIL" start="2025-07-21T12:15:49.340284" elapsed="0.006443">Recursive execution stopped.</status>
+</kw>
+<status status="FAIL" start="2025-07-21T12:15:49.340218" elapsed="0.006657">Recursive execution stopped.</status>
+</kw>
+<status status="FAIL" start="2025-07-21T12:15:49.340146" elapsed="0.006872">Recursive execution stopped.</status>
+</kw>
+<status status="FAIL" start="2025-07-21T12:15:49.340005" elapsed="0.007143">Recursive execution stopped.</status>
+</kw>
+<status status="FAIL" start="2025-07-21T12:15:49.339941" elapsed="0.007318">Recursive execution stopped.</status>
+</kw>
+<status status="FAIL" start="2025-07-21T12:15:49.339873" elapsed="0.007494">Recursive execution stopped.</status>
+</kw>
+<status status="FAIL" start="2025-07-21T12:15:49.339802" elapsed="0.007673">Recursive execution stopped.</status>
+</kw>
+<status status="FAIL" start="2025-07-21T12:15:49.339734" elapsed="0.007849">Recursive execution stopped.</status>
+</kw>
+<status status="FAIL" start="2025-07-21T12:15:49.339664" elapsed="0.008025">Recursive execution stopped.</status>
+</kw>
+<status status="FAIL" start="2025-07-21T12:15:49.339590" elapsed="0.008205">Recursive execution stopped.</status>
+</kw>
+<status status="FAIL" start="2025-07-21T12:15:49.339515" elapsed="0.008386">Recursive execution stopped.</status>
+</kw>
+<status status="FAIL" start="2025-07-21T12:15:49.339443" elapsed="0.008563">Recursive execution stopped.</status>
+</kw>
+<status status="FAIL" start="2025-07-21T12:15:49.339311" elapsed="0.010974">Recursive execution stopped.</status>
+</kw>
+<status status="FAIL" start="2025-07-21T12:15:49.339165" elapsed="0.011296">Recursive execution stopped.</status>
+</kw>
+<status status="FAIL" start="2025-07-21T12:15:49.339082" elapsed="0.011552">Recursive execution stopped.</status>
+</kw>
+<status status="FAIL" start="2025-07-21T12:15:49.339007" elapsed="0.011793">Recursive execution stopped.</status>
+</kw>
+<status status="FAIL" start="2025-07-21T12:15:49.338930" elapsed="0.012020">Recursive execution stopped.</status>
+</kw>
+<status status="FAIL" start="2025-07-21T12:15:49.338848" elapsed="0.012244">Recursive execution stopped.</status>
+</kw>
+<status status="FAIL" start="2025-07-21T12:15:49.338765" elapsed="0.012468">Recursive execution stopped.</status>
+</kw>
+<status status="FAIL" start="2025-07-21T12:15:49.338672" elapsed="0.012702">Recursive execution stopped.</status>
+</kw>
+<status status="FAIL" start="2025-07-21T12:15:49.338591" elapsed="0.012921">Recursive execution stopped.</status>
+</kw>
+<status status="FAIL" start="2025-07-21T12:15:49.338504" elapsed="0.013177">Recursive execution stopped.</status>
+</kw>
+<status status="FAIL" start="2025-07-21T12:15:49.338413" elapsed="0.013403">Recursive execution stopped.</status>
+</kw>
+<status status="FAIL" start="2025-07-21T12:15:49.338245" elapsed="0.013701">Recursive execution stopped.</status>
+</kw>
+<status status="FAIL" start="2025-07-21T12:15:49.338084" elapsed="0.013989">Recursive execution stopped.</status>
+</kw>
+<status status="FAIL" start="2025-07-21T12:15:49.337923" elapsed="0.014277">Recursive execution stopped.</status>
+</kw>
+<status status="FAIL" start="2025-07-21T12:15:49.337674" elapsed="0.014673">Recursive execution stopped.</status>
+</kw>
+<status status="FAIL" start="2025-07-21T12:15:49.337267" elapsed="0.015223">Recursive execution stopped.</status>
+</kw>
+<status status="FAIL" start="2025-07-21T12:15:49.337037" elapsed="0.015609">Recursive execution stopped.</status>
+</kw>
+<status status="FAIL" start="2025-07-21T12:15:49.336870" elapsed="0.015899">Recursive execution stopped.</status>
+</kw>
+<status status="FAIL" start="2025-07-21T12:15:49.336691" elapsed="0.016214">Recursive execution stopped.</status>
+</kw>
+<status status="FAIL" start="2025-07-21T12:15:49.336501" elapsed="0.016532">Recursive execution stopped.</status>
+</kw>
+<status status="FAIL" start="2025-07-21T12:15:49.336324" elapsed="0.016834">Recursive execution stopped.</status>
+</kw>
+<status status="FAIL" start="2025-07-21T12:15:49.336160" elapsed="0.017125">Recursive execution stopped.</status>
+</kw>
+<status status="FAIL" start="2025-07-21T12:15:49.335999" elapsed="0.017409">Recursive execution stopped.</status>
+</kw>
+<status status="FAIL" start="2025-07-21T12:15:49.335836" elapsed="0.017693">Recursive execution stopped.</status>
+</kw>
+<status status="FAIL" start="2025-07-21T12:15:49.335682" elapsed="0.017961">Recursive execution stopped.</status>
+</kw>
+<status status="FAIL" start="2025-07-21T12:15:49.335517" elapsed="0.018238">Recursive execution stopped.</status>
+</kw>
+<status status="FAIL" start="2025-07-21T12:15:49.335339" elapsed="0.018529">Recursive execution stopped.</status>
+</kw>
+<status status="FAIL" start="2025-07-21T12:15:49.335004" elapsed="0.018968">Recursive execution stopped.</status>
+</kw>
+<status status="FAIL" start="2025-07-21T12:15:49.334828" elapsed="0.019256">Recursive execution stopped.</status>
+</kw>
+<status status="FAIL" start="2025-07-21T12:15:49.334474" elapsed="0.019752">Recursive execution stopped.</status>
+</kw>
+<status status="FAIL" start="2025-07-21T12:15:49.334146" elapsed="0.020201">Recursive execution stopped.</status>
+</kw>
+<status status="FAIL" start="2025-07-21T12:15:49.333978" elapsed="0.020500">Recursive execution stopped.</status>
+</kw>
+<status status="FAIL" start="2025-07-21T12:15:49.333817" elapsed="0.020768">Recursive execution stopped.</status>
+</kw>
+<status status="FAIL" start="2025-07-21T12:15:49.333649" elapsed="0.021046">Recursive execution stopped.</status>
+</kw>
+<status status="FAIL" start="2025-07-21T12:15:49.333477" elapsed="0.021325">Recursive execution stopped.</status>
+</kw>
+<status status="FAIL" start="2025-07-21T12:15:49.333305" elapsed="0.021595">Recursive execution stopped.</status>
+</kw>
+<status status="FAIL" start="2025-07-21T12:15:49.333123" elapsed="0.021866">Recursive execution stopped.</status>
+</kw>
+<status status="FAIL" start="2025-07-21T12:15:49.332914" elapsed="0.022165">Recursive execution stopped.</status>
+</kw>
+<status status="FAIL" start="2025-07-21T12:15:49.332734" elapsed="0.022439">Recursive execution stopped.</status>
+</kw>
+<status status="FAIL" start="2025-07-21T12:15:49.332540" elapsed="0.022724">Recursive execution stopped.</status>
+</kw>
+<status status="FAIL" start="2025-07-21T12:15:49.332424" elapsed="0.022930">Recursive execution stopped.</status>
+</kw>
+<status status="FAIL" start="2025-07-21T12:15:49.332336" elapsed="0.023099">Recursive execution stopped.</status>
+</kw>
+<status status="FAIL" start="2025-07-21T12:15:49.332243" elapsed="0.023284">Recursive execution stopped.</status>
+</kw>
+<status status="FAIL" start="2025-07-21T12:15:49.332108" elapsed="0.023538">Recursive execution stopped.</status>
+</kw>
+<status status="FAIL" start="2025-07-21T12:15:49.331896" elapsed="0.023837">Recursive execution stopped.</status>
+</kw>
+<status status="FAIL" start="2025-07-21T12:15:49.331781" elapsed="0.024040">Recursive execution stopped.</status>
+</kw>
+<status status="FAIL" start="2025-07-21T12:15:49.331689" elapsed="0.024209">Recursive execution stopped.</status>
+</kw>
+<status status="FAIL" start="2025-07-21T12:15:49.331597" elapsed="0.024377">Recursive execution stopped.</status>
+</kw>
+<status status="FAIL" start="2025-07-21T12:15:49.331496" elapsed="0.024553">Recursive execution stopped.</status>
+</kw>
+<status status="FAIL" start="2025-07-21T12:15:49.331387" elapsed="0.024737">Recursive execution stopped.</status>
+</kw>
+<status status="FAIL" start="2025-07-21T12:15:49.331292" elapsed="0.024906">Recursive execution stopped.</status>
+</kw>
+<status status="FAIL" start="2025-07-21T12:15:49.331191" elapsed="0.025086">Recursive execution stopped.</status>
+</kw>
+<status status="FAIL" start="2025-07-21T12:15:49.331088" elapsed="0.025264">Recursive execution stopped.</status>
+</kw>
+<status status="FAIL" start="2025-07-21T12:15:49.330994" elapsed="0.025430">Recursive execution stopped.</status>
+</kw>
+<status status="FAIL" start="2025-07-21T12:15:49.330898" elapsed="0.025599">Recursive execution stopped.</status>
+</kw>
+<status status="FAIL" start="2025-07-21T12:15:49.330801" elapsed="0.025768">Recursive execution stopped.</status>
+</kw>
+<status status="FAIL" start="2025-07-21T12:15:49.330694" elapsed="0.026019">Recursive execution stopped.</status>
+</kw>
+<status status="FAIL" start="2025-07-21T12:15:49.330580" elapsed="0.026208">Recursive execution stopped.</status>
+</kw>
+<status status="FAIL" start="2025-07-21T12:15:49.330361" elapsed="0.027087">Recursive execution stopped.</status>
+</kw>
+<status status="FAIL" start="2025-07-21T12:15:49.330171" elapsed="0.027361">Recursive execution stopped.</status>
+</kw>
+<status status="FAIL" start="2025-07-21T12:15:49.330059" elapsed="0.027554">Recursive execution stopped.</status>
+</kw>
+<status status="FAIL" start="2025-07-21T12:15:49.329946" elapsed="0.027736">Recursive execution stopped.</status>
+</kw>
+<status status="FAIL" start="2025-07-21T12:15:49.329821" elapsed="0.027931">Recursive execution stopped.</status>
+</kw>
+<status status="FAIL" start="2025-07-21T12:15:49.329553" elapsed="0.028264">Recursive execution stopped.</status>
+</kw>
+<status status="FAIL" start="2025-07-21T12:15:49.329219" elapsed="0.028664">Recursive execution stopped.</status>
+</kw>
+<status status="FAIL" start="2025-07-21T12:15:49.328748" elapsed="0.029200">Recursive execution stopped.</status>
+</kw>
+<status status="FAIL" start="2025-07-21T12:15:49.328561" elapsed="0.029459">Recursive execution stopped.</status>
+</kw>
+<status status="FAIL" start="2025-07-21T12:15:49.328380" elapsed="0.029707">Recursive execution stopped.</status>
+</kw>
+<status status="FAIL" start="2025-07-21T12:15:49.328192" elapsed="0.029958">Recursive execution stopped.</status>
+</kw>
+<status status="FAIL" start="2025-07-21T12:15:49.328012" elapsed="0.030201">Recursive execution stopped.</status>
+</kw>
+<status status="FAIL" start="2025-07-21T12:15:49.327831" elapsed="0.030445">Recursive execution stopped.</status>
+</kw>
+<status status="FAIL" start="2025-07-21T12:15:49.327649" elapsed="0.030689">Recursive execution stopped.</status>
+</kw>
+<status status="FAIL" start="2025-07-21T12:15:49.327355" elapsed="0.031872">Recursive execution stopped.</status>
+</kw>
+<status status="FAIL" start="2025-07-21T12:15:49.326988" elapsed="0.032306">Recursive execution stopped.</status>
+</kw>
+<status status="FAIL" start="2025-07-21T12:15:49.326803" elapsed="0.032558">Recursive execution stopped.</status>
+</kw>
+<status status="FAIL" start="2025-07-21T12:15:49.326600" elapsed="0.032820">Recursive execution stopped.</status>
+</kw>
+<status status="FAIL" start="2025-07-21T12:15:49.326385" elapsed="0.033095">Recursive execution stopped.</status>
+</kw>
+<status status="FAIL" start="2025-07-21T12:15:49.326176" elapsed="0.033364">Recursive execution stopped.</status>
+</kw>
+<status status="FAIL" start="2025-07-21T12:15:49.325979" elapsed="0.033618">Recursive execution stopped.</status>
+</kw>
+<status status="FAIL" start="2025-07-21T12:15:49.325784" elapsed="0.033873">Recursive execution stopped.</status>
+</kw>
+<status status="FAIL" start="2025-07-21T12:15:49.325591" elapsed="0.034122">Recursive execution stopped.</status>
+</kw>
+<status status="FAIL" start="2025-07-21T12:15:49.325385" elapsed="0.034391">Recursive execution stopped.</status>
+</kw>
+<status status="FAIL" start="2025-07-21T12:15:49.325190" elapsed="0.034643">Recursive execution stopped.</status>
+</kw>
+<status status="FAIL" start="2025-07-21T12:15:49.324998" elapsed="0.034890">Recursive execution stopped.</status>
+</kw>
+<status status="FAIL" start="2025-07-21T12:15:49.324803" elapsed="0.035141">Recursive execution stopped.</status>
+</kw>
+<status status="FAIL" start="2025-07-21T12:15:49.324609" elapsed="0.035391">Recursive execution stopped.</status>
+</kw>
+<status status="FAIL" start="2025-07-21T12:15:49.324262" elapsed="0.035806">Recursive execution stopped.</status>
+</kw>
+<status status="FAIL" start="2025-07-21T12:15:49.323833" elapsed="0.036301">Recursive execution stopped.</status>
+</kw>
+<status status="FAIL" start="2025-07-21T12:15:49.323647" elapsed="0.036557">Recursive execution stopped.</status>
+</kw>
+<status status="FAIL" start="2025-07-21T12:15:49.323507" elapsed="0.036750">Recursive execution stopped.</status>
+</kw>
+<status status="FAIL" start="2025-07-21T12:15:49.323368" elapsed="0.036940">Recursive execution stopped.</status>
+</kw>
+<status status="FAIL" start="2025-07-21T12:15:49.323219" elapsed="0.037141">Recursive execution stopped.</status>
+</kw>
+<status status="FAIL" start="2025-07-21T12:15:49.323072" elapsed="0.037338">Recursive execution stopped.</status>
+</kw>
+<status status="FAIL" start="2025-07-21T12:15:49.322925" elapsed="0.037534">Recursive execution stopped.</status>
+</kw>
+<status status="FAIL" start="2025-07-21T12:15:49.322777" elapsed="0.037730">Recursive execution stopped.</status>
+</kw>
+<status status="FAIL" start="2025-07-21T12:15:49.322624" elapsed="0.037930">Recursive execution stopped.</status>
+</kw>
+<status status="FAIL" start="2025-07-21T12:15:49.322466" elapsed="0.038135">Recursive execution stopped.</status>
+</kw>
+<status status="FAIL" start="2025-07-21T12:15:49.322068" elapsed="0.038581">Recursive execution stopped.</status>
+</kw>
+<status status="FAIL" start="2025-07-21T12:15:49.321901" elapsed="0.038795">Recursive execution stopped.</status>
+</kw>
+<status status="FAIL" start="2025-07-21T12:15:49.321692" elapsed="0.039054">Recursive execution stopped.</status>
+</kw>
+<status status="FAIL" start="2025-07-21T12:15:49.321285" elapsed="0.039508">Recursive execution stopped.</status>
+</kw>
+<status status="FAIL" start="2025-07-21T12:15:49.320210" elapsed="0.040662">Recursive execution stopped.</status>
+</kw>
+<status status="FAIL" start="2025-07-21T12:15:49.319839" elapsed="0.041080">Recursive execution stopped.</status>
+</kw>
+<status status="FAIL" start="2025-07-21T12:15:49.319666" elapsed="0.041319">Recursive execution stopped.</status>
+</kw>
+<status status="FAIL" start="2025-07-21T12:15:49.319471" elapsed="0.041558">Recursive execution stopped.</status>
+</kw>
+<status status="FAIL" start="2025-07-21T12:15:49.319302" elapsed="0.041770">Recursive execution stopped.</status>
+</kw>
+<status status="FAIL" start="2025-07-21T12:15:49.319124" elapsed="0.041991">Recursive execution stopped.</status>
+</kw>
+<status status="FAIL" start="2025-07-21T12:15:49.318942" elapsed="0.042216">Recursive execution stopped.</status>
+</kw>
+<status status="FAIL" start="2025-07-21T12:15:49.318727" elapsed="0.042472">Recursive execution stopped.</status>
+</kw>
+<status status="FAIL" start="2025-07-21T12:15:49.318546" elapsed="0.042695">Recursive execution stopped.</status>
+</kw>
+<status status="FAIL" start="2025-07-21T12:15:49.318359" elapsed="0.042921">Recursive execution stopped.</status>
+</kw>
+<status status="FAIL" start="2025-07-21T12:15:49.318182" elapsed="0.043139">Recursive execution stopped.</status>
+</kw>
+<status status="FAIL" start="2025-07-21T12:15:49.317991" elapsed="0.043370">Recursive execution stopped.</status>
+</kw>
+<status status="FAIL" start="2025-07-21T12:15:49.317820" elapsed="0.043580">Recursive execution stopped.</status>
+</kw>
+<status status="FAIL" start="2025-07-21T12:15:49.317655" elapsed="0.043785">Recursive execution stopped.</status>
+</kw>
+<status status="FAIL" start="2025-07-21T12:15:49.317408" elapsed="0.044096">Recursive execution stopped.</status>
+</kw>
+<status status="FAIL" start="2025-07-21T12:15:49.317023" elapsed="0.044525">Recursive execution stopped.</status>
+</kw>
+<status status="FAIL" start="2025-07-21T12:15:49.316790" elapsed="0.044805">Recursive execution stopped.</status>
+</kw>
+<status status="FAIL" start="2025-07-21T12:15:49.316633" elapsed="0.044998">Recursive execution stopped.</status>
+</kw>
+<status status="FAIL" start="2025-07-21T12:15:49.316459" elapsed="0.045208">Recursive execution stopped.</status>
+</kw>
+<status status="FAIL" start="2025-07-21T12:15:49.316302" elapsed="0.045401">Recursive execution stopped.</status>
+</kw>
+<status status="FAIL" start="2025-07-21T12:15:49.316146" elapsed="0.045601">Recursive execution stopped.</status>
+</kw>
+<status status="FAIL" start="2025-07-21T12:15:49.315967" elapsed="0.045815">Recursive execution stopped.</status>
+</kw>
+<status status="FAIL" start="2025-07-21T12:15:49.315804" elapsed="0.046034">Recursive execution stopped.</status>
+</kw>
+<status status="FAIL" start="2025-07-21T12:15:49.315646" elapsed="0.046227">Recursive execution stopped.</status>
+</kw>
+<status status="FAIL" start="2025-07-21T12:15:49.315494" elapsed="0.046411">Recursive execution stopped.</status>
+</kw>
+<status status="FAIL" start="2025-07-21T12:15:49.315321" elapsed="0.046618">Recursive execution stopped.</status>
+</kw>
+<status status="FAIL" start="2025-07-21T12:15:49.315060" elapsed="0.046911">Recursive execution stopped.</status>
+</kw>
+<status status="FAIL" start="2025-07-21T12:15:48.989280" elapsed="0.372724">Suite teardown failed:
+Recursive execution stopped.</status>
+</suite>
+<statistics>
+<total>
+<stat pass="0" fail="1" skip="0">All Tests</stat>
+</total>
+<tag>
+</tag>
+<suite>
+<stat name="LightFunctionality" id="s1" pass="0" fail="1" skip="0">LightFunctionality</stat>
+</suite>
+</statistics>
+<errors>
+<msg time="2025-07-21T12:15:49.006896" level="WARN">Error in file 'C:\Users\DELL\Desktop\KPIT\KPIT-SUMMER-2025\components\robot_tests\resources\CommonKeywords.robot' on line 23: The '[Return]' setting is deprecated. Use the 'RETURN' statement instead.</msg>
+<msg time="2025-07-21T12:15:49.007225" level="WARN">Error in file 'C:\Users\DELL\Desktop\KPIT\KPIT-SUMMER-2025\components\robot_tests\resources\CommonKeywords.robot' on line 33: The '[Return]' setting is deprecated. Use the 'RETURN' statement instead.</msg>
+<msg time="2025-07-21T12:15:49.029350" level="WARN">Keyword 'DatabaseLibrary.Connect To Database Using Custom Params' is deprecated. Use new `Connect To Database` keyword with custom parameters instead.
+The deprecated keyword will be removed in future versions.</msg>
+</errors>
+</robot>
