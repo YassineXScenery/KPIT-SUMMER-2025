@@ -1,0 +1,3 @@
+robotframework==6.0.2
+python-can>=3.3.4
+pylin>=0.1.0

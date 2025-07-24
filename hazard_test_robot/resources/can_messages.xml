@@ -1,0 +1,25 @@
+<?xml version="1.0"?>
+<Bus Name="Hazard_CAN">
+    <message name="Mode_Transition" id="0x2F1">
+        <sender>Main_ECU</sender>
+        <receiver>Client_ECU</receiver>
+        <Byte>
+            <Num>0</Num>
+            <Value>0x00</Value> <!-- P mode -->
+            <Value>0x01</Value> <!-- F mode -->
+            <Value>0x02</Value> <!-- W mode -->
+            <Value>0x03</Value> <!-- S mode -->
+        </Byte>
+    </message>
+    <message name="LED_Status" id="0x2F2">
+        <sender>Main_ECU</sender>
+        <receiver>Client_ECU</receiver>
+        <Byte>
+            <Num>0</Num>
+            <Value>0x00</Value> <!-- OFF -->
+            <Value>0x01</Value> <!-- BLINK_FAST -->
+            <Value>0x02</Value> <!-- BLINK_SLOW -->
+            <Value>0x03</Value> <!-- BLINK_URGENT -->
+        </Byte>
+    </message>
+</Bus>

@@ -1,0 +1,14 @@
+<?xml version="1.0"?>
+<Bus Name="Hazard_LIN">
+    <message name="Mode_Request" id="0x30">
+        <sender>Client_ECU</sender>
+        <receiver>Main_ECU</receiver>
+        <Byte>
+            <Num>0</Num>
+            <Value>0x00</Value> <!-- P mode -->
+            <Value>0x01</Value> <!-- F mode -->
+            <Value>0x02</Value> <!-- W mode -->
+            <Value>0x03</Value> <!-- S mode -->
+        </Byte>
+    </message>
+</Bus>
