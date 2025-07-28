@@ -1,14 +1,149 @@
 <?xml version="1.0"?>
 <Bus Name="Hazard_LIN">
+    <!-- Mode Transition Messages -->
     <message name="Mode_Request" id="0x30">
         <sender>Client_ECU</sender>
         <receiver>Main_ECU</receiver>
+        <Event>
+            <status>true</status>
+            <Repetition>1</Repetition>
+        </Event>
         <Byte>
             <Num>0</Num>
-            <Value>0x00</Value> <!-- P mode -->
-            <Value>0x01</Value> <!-- F mode -->
-            <Value>0x02</Value> <!-- W mode -->
-            <Value>0x03</Value> <!-- S mode -->
+            <Signal Bit="xxxxxx11">
+                <signal_name>requested_mode</signal_name>
+                <values>
+                    <value>0</value>
+                    <name>P</name>
+                </values>
+                <values>
+                    <value>1</value>
+                    <name>F</name>
+                </values>
+                <values>
+                    <value>2</value>
+                    <name>W</name>
+                </values>
+                <values>
+                    <value>3</value>
+                    <name>S</name>
+                </values>
+            </Signal>
+        </Byte>
+    </message>
+
+    <!-- LED Status Messages -->
+    <message name="LED_Status_Response" id="0x31">
+        <sender>Main_ECU</sender>
+        <receiver>Client_ECU</receiver>
+        <Cyclic>
+            <status>true</status>
+            <cycle>100</cycle> <!-- 100ms cycle time -->
+        </Cyclic>
+        <Byte>
+            <Num>0</Num>
+            <Signal Bit="xxxxxx11">
+                <signal_name>led_state</signal_name>
+                <values>
+                    <value>0</value>
+                    <name>OFF</name>
+                </values>
+                <values>
+                    <value>1</value>
+                    <name>BLINK_FAST</name>
+                </values>
+                <values>
+                    <value>2</value>
+                    <name>BLINK_SLOW</name>
+                </values>
+                <values>
+                    <value>3</value>
+                    <name>BLINK_URGENT</name>
+                </values>
+            </Signal>
+        </Byte>
+        <Byte>
+            <Num>1</Num>
+            <Signal Bit="xxxxxxxx">
+                <signal_name>blink_counter</signal_name>
+                <values>
+                    <value>0-255</value>
+                    <name>blink_cycles</name>
+                </values>
+            </Signal>
+        </Byte>
+    </message>
+
+    <!-- System Status Messages -->
+    <message name="System_Status" id="0x32">
+        <sender>Main_ECU</sender>
+        <receiver>Client_ECU</receiver>
+        <Cyclic>
+            <status>true</status>
+            <cycle>500</cycle> <!-- 500ms cycle time -->
+        </Cyclic>
+        <Byte>
+            <Num>0</Num>
+            <Signal Bit="xxxxxx11">
+                <signal_name>current_mode</signal_name>
+                <values>
+                    <value>0</value>
+                    <name>P</name>
+                </values>
+                <values>
+                    <value>1</value>
+                    <name>F</name>
+                </values>
+                <values>
+                    <value>2</value>
+                    <name>W</name>
+                </values>
+                <values>
+                    <value>3</value>
+                    <name>S</name>
+                </values>
+            </Signal>
+            <Signal Bit="xx11xxxx">
+                <signal_name>transition_status</signal_name>
+                <values>
+                    <value>0</value>
+                    <name>Idle</name>
+                </values>
+                <values>
+                    <value>1</value>
+                    <name>In_Progress</name>
+                </values>
+                <values>
+                    <value>2</value>
+                    <name>Completed</name>
+                </values>
+                <values>
+                    <value>3</value>
+                    <name>Error</name>
+                </values>
+            </Signal>
+        </Byte>
+        <Byte>
+            <Num>1</Num>
+            <Signal Bit="xxxxxxxx">
+                <signal_name>error_code</signal_name>
+                <values>
+                    <value>0</value>
+                    <name>No_Error</name>
+                </values>
+                <values>
+                    <value>1</value>
+                    <name>Invalid_Transition</name>
+                </values>
+                <values>
+                    <value>2</value>
+                    <name>Mode_Conflict</name>
+                </values>
+                <values>
+                    <value>3</value>
+                    <name>System_Fault</name>
+                </values>
+            </Signal>
         </Byte>
     </message>
 </Bus>
