@@ -5,7 +5,7 @@ import time
 
 # Database Configuration
 DB_CONFIG = {
-    'host': '10.10.0.55',
+    'host': '10.10.0.47',
     'port': 3306,
     'user': 'user',
     'password': '1234',
